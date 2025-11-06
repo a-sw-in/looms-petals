@@ -1,6 +1,7 @@
 .container {
   position: relative;
   width: 100%;
+  margin-top: 20px;
   padding: 20px 0;
   overflow: hidden;
 }
@@ -10,9 +11,23 @@
   gap: 24px;
   overflow-x: auto;
   scroll-behavior: smooth;
-  padding: 0 56px; /* breathing room for arrows */
+  padding: 5px 56px; /* breathing room for arrows */
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+
+.sectionTitle {
+  text-align: left;
+  margin-left: 4rem;
+  text-transform: uppercase;
+  font-size: clamp(24px, 3.6vw, 33.6px);
+  font-weight: 900;
+  letter-spacing: 0.05em;
+  margin-right: 0;
+  margin-bottom: 4vh;
+  margin-top: 11vh;
+  color: #3d3d3d;
 }
 
 .carousel::-webkit-scrollbar {

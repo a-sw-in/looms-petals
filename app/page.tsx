@@ -4,6 +4,7 @@ import Trend from "./components/trend";
 import Price from "./components/price";
 import CardSection from "./components/cardSection";
 import ScrollTrend from "./components/scrollTrend";
+import ScrollTrendJewel from "./components/scrollTrendJewel";
 
 
 export default function Home() {
@@ -14,6 +15,7 @@ export default function Home() {
       <CardSection />
       <Trend />
       <ScrollTrend />
+      <ScrollTrendJewel />
       <Section />
     </div>
   );

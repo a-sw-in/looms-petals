@@ -60,7 +60,7 @@ const ScrollTrend = () => {
 
   return (
     <div className={styles.container}>
-        <h2 className={styles.sectionTitle} >Latest Clothes</h2>
+        <h2 className={styles.sectionTitle}>Latest jewels</h2>
       <div className={styles.carousel} ref={trackRef}>
         {brandCards.map((card, index) => (
           <div key={index} className={styles.card}>

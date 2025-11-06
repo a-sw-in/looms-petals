@@ -74,6 +74,8 @@ export default function Trend() {
 				))}
 			</div>
 
+			
+
 		</section>
 	);
 }
