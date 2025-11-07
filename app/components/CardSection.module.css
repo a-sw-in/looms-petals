@@ -21,10 +21,11 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+  align-content: center;
   gap: 32px; /* Increased spacing between cards */
-  width: 73%; /* Reduced by another 10% */
-  max-width: 972px; /* Reduced by another 10% */
+  width: 85%; /* Reduced by another 10% */
+  max-width: 90vw; /* Reduced by another 10% */
   margin: 0 auto;
   align-items: start;
   justify-content: center;

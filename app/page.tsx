@@ -5,6 +5,7 @@ import Price from "./components/price";
 import CardSection from "./components/cardSection";
 import ScrollTrend from "./components/scrollTrend";
 import ScrollTrendJewel from "./components/scrollTrendJewel";
+import WhatsAppFeedback from "./components/WhatsAppFeedback";
 
 
 export default function Home() {
@@ -16,6 +17,7 @@ export default function Home() {
       <Trend />
       <ScrollTrend />
       <ScrollTrendJewel />
+      <WhatsAppFeedback />
       <Section />
     </div>
   );
