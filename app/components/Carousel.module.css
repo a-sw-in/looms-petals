@@ -158,11 +158,11 @@
   }
   
   .carousel {
-    height: 70vh;
+    height: 60vh;
   }
   
   .carousel-card {
-    height: 70vh;
+    height: 60vh;
   }
   
   .carousel :global(.carousel-caption) {
