@@ -10,7 +10,7 @@
 
 .carousel {
   width: 100vw;
-  height: 72vh;
+  height: 75vh;
 }
 
 .carousel :global(.carousel-inner) {
@@ -29,7 +29,7 @@
 
 .carousel-card {
   width: 100vw;
-  height: 72vh;
+  height: 75vh;
   position: relative;
   background: #000;
   border-radius: 0px;
@@ -137,11 +137,11 @@
   }
   
   .carousel {
-    height: 50vh;
+    height: 60vh;
   }
   
   .carousel-card {
-    height: 50vh;
+    height: 60vh;
   }
   
   .carousel :global(.carousel-caption) {

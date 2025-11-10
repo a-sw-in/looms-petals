@@ -91,21 +91,31 @@ export default function CardSection() {
 					}
 					
 					return (
-					<div 
-						key={product.id} 
-						className={styles.card}
-						onClick={() => router.push(`/product/${slug}-${product.id}`)}
-					>
-						<div className={styles.imageContainer}>
-							<img
-								src={imageUrl}
-								alt={product.name}
-								loading="lazy"
-							/>
-						</div>
-						<h3 className={styles.label}>{product.name.toUpperCase()}</h3>
-						<p className={styles.price}>₹{product.price}</p>
-					</div>
+						<article key={product.id} className={styles.card}>
+							<section 
+								className={styles.cardHero}
+								style={{ backgroundImage: `url(${imageUrl})` }}
+							>
+								<header className={styles.cardHeroHeader}>
+								</header>
+								<p className={styles.cardJobTitle}>{product.name}</p>
+								<p className={styles.cardJobTitle1}>{product.category}</p>
+									
+							</section>
+							<footer className={styles.cardFooter}>
+								<div className={styles.cardJobSummary}>
+									<div className={styles.cardJob}>
+										<p className={styles.cardJobCategory}>₹{product.price}</p>
+									</div>
+								</div>
+								<button 
+									className={styles.cardBtn}
+									onClick={() => router.push(`/product/${slug}-${product.id}`)}
+								>
+									view
+								</button>
+							</footer>
+						</article>
 					);
 				})}
 			</div>

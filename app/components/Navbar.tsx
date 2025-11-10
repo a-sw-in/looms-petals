@@ -141,13 +141,19 @@ export function Navbar() {
         <div className="tnq-brand">
           <span className="tnq-brand-text">LOOMS & PETALS</span>
         </div>
-        
-        <div className="tnq-search" role="search">
-          <span className="tnq-search-icon" aria-hidden><Icon.Search /></span>
-          <input className="tnq-search-input" placeholder="Search for Jewellery, Dresses and more..." />
-          <div className="tnq-search-actions">
-          </div>
-        </div>
+        <div className="tnq-row justify-center tnq-row-menu tnq-desktop-menu">
+        {menu.map((m) => (
+          <button
+            key={m.key}
+            onClick={() => setActive(m.key)}
+            className={`tnq-menu-item ${active === m.key ? 'active' : ''}`}
+          >
+            <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
+            <span className="tnq-menu-label">{m.label}</span>
+          </button>
+        ))}
+      </div>
+       
 
         <div className="tnq-nav-actions">
           <CartIcon />
@@ -157,7 +163,6 @@ export function Navbar() {
               onClick={() => setShowAccountMenu(!showAccountMenu)}
             >
               <Icon.User />
-              <span>Account</span>
             </button>
             {showAccountMenu && (
               <div className="tnq-account-menu">
@@ -193,19 +198,6 @@ export function Navbar() {
         </div>
       </div>
 
-      {/* Desktop Menu Row */}
-      <div className="tnq-row justify-center tnq-row-menu tnq-desktop-menu">
-        {menu.map((m) => (
-          <button
-            key={m.key}
-            onClick={() => setActive(m.key)}
-            className={`tnq-menu-item ${active === m.key ? 'active' : ''}`}
-          >
-            <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
-            <span className="tnq-menu-label">{m.label}</span>
-          </button>
-        ))}
-      </div>
 
       {/* Mobile Menu Dropdown */}
       <div className={`tnq-mobile-menu ${mobileMenuOpen ? 'open' : ''}`}>

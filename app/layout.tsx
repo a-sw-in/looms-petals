@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Dark Mode Toggle",
+  title: "Looms and petals",
   description: "Simple website with dark/light mode toggle",
 };
 

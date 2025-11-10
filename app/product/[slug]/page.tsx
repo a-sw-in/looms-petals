@@ -44,6 +44,9 @@ export default function ProductPage() {
 	const [quantity, setQuantity] = useState(1);
 	const [currentImage, setCurrentImage] = useState(0);
 	const [addingToCart, setAddingToCart] = useState(false);
+	const [showGallery, setShowGallery] = useState(false);
+	const [expandedImage, setExpandedImage] = useState<number | null>(null);
+	const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
 
 	const fetchProduct = useCallback(async (slug: string) => {
 		try {
@@ -78,9 +81,24 @@ export default function ProductPage() {
 
 	const images = useMemo(() => {
 		if (!product) return [];
+		
+		// Try to parse image_url if it's a JSON array
+		if (product.image_url) {
+			try {
+				const parsedImages = JSON.parse(product.image_url);
+				if (Array.isArray(parsedImages) && parsedImages.length > 0) {
+					return parsedImages;
+				}
+			} catch {
+				// If parse fails, it's a single URL string
+				return [product.image_url];
+			}
+		}
+		
+		// Fallback to product.images array or placeholder
 		return product.images && product.images.length > 0
 			? product.images
-			: [product.image_url || `https://picsum.photos/seed/${product.id}/800/1000`];
+			: [`https://picsum.photos/seed/${product.id}/800/1000`];
 	}, [product]);
 
 	const discount = useMemo(() => {
@@ -99,6 +117,53 @@ export default function ProductPage() {
 		setCurrentImage(index);
 	}, []);
 
+	const handleGalleryOpen = useCallback(() => {
+		setShowGallery(true);
+	}, []);
+
+	const handleGalleryClose = useCallback(() => {
+		setShowGallery(false);
+	}, []);
+
+	const handleImageExpand = useCallback((index: number) => {
+		setExpandedImage(index);
+	}, []);
+
+	const handleImageCollapse = useCallback(() => {
+		setExpandedImage(null);
+	}, []);
+
+	const handleGalleryImageHover = useCallback((index: number) => {
+		// Clear any existing timer
+		if (hoverTimer) {
+			clearTimeout(hoverTimer);
+		}
+
+		// Set a new timer for 2 seconds
+		const timer = setTimeout(() => {
+			setExpandedImage(index);
+		}, 1000);
+
+		setHoverTimer(timer);
+	}, [hoverTimer]);
+
+	const handleGalleryImageLeave = useCallback(() => {
+		// Clear the timer when mouse leaves
+		if (hoverTimer) {
+			clearTimeout(hoverTimer);
+			setHoverTimer(null);
+		}
+	}, [hoverTimer]);
+
+	// Cleanup timer on unmount
+	useEffect(() => {
+		return () => {
+			if (hoverTimer) {
+				clearTimeout(hoverTimer);
+			}
+		};
+	}, [hoverTimer]);
+
 	const handleAddToCart = useCallback(() => {
 		if (!product) return;
 
@@ -114,12 +179,26 @@ export default function ProductPage() {
 
 		setAddingToCart(true);
 
+		// Parse image_url to get the first image if it's an array
+		let imageUrl = product.image_url;
+		if (product.image_url) {
+			try {
+				const images = JSON.parse(product.image_url);
+				if (Array.isArray(images) && images.length > 0 && images[0]) {
+					imageUrl = images[0];
+				}
+			} catch {
+				// If parse fails, use the original value (it's already a string URL)
+				imageUrl = product.image_url;
+			}
+		}
+
 		const success = addToCart({
 			id: product.id,
 			name: product.name,
 			price: product.price,
 			discount_price: product.discount_price,
-			image_url: product.image_url,
+			image_url: imageUrl,
 			selectedSize: selectedSize || undefined,
 			selectedColor: selectedColor || undefined,
 			brand: product.brand || '',
@@ -225,6 +304,57 @@ export default function ProductPage() {
 				dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
 			/>
 
+			{/* Image Gallery Modal */}
+			{showGallery && (
+				<div className={styles.galleryModal} onClick={handleGalleryClose}>
+					<div className={styles.galleryContent} onClick={(e) => e.stopPropagation()}>
+						<button className={styles.galleryClose} onClick={handleGalleryClose}>
+							✕
+						</button>
+						<div className={styles.galleryGrid}>
+							{images.map((img, index) => (
+								<div
+									key={index}
+									className={styles.galleryItem}
+									onClick={() => handleImageExpand(index)}
+									onMouseEnter={() => handleGalleryImageHover(index)}
+									onMouseLeave={handleGalleryImageLeave}
+								>
+									<Image
+										src={img}
+										alt={`${product.name} ${index + 1}`}
+										fill
+										sizes="(max-width: 768px) 100vw, 33vw"
+										quality={80}
+										style={{ objectFit: "cover" }}
+									/>
+								</div>
+							))}
+						</div>
+					</div>
+				</div>
+			)}
+
+			{/* Expanded Image Modal */}
+			{expandedImage !== null && (
+				<div className={styles.expandedModal} onClick={handleImageCollapse}>
+					<button className={styles.expandedClose} onClick={handleImageCollapse}>
+						✕
+					</button>
+					<div className={styles.expandedImageWrapper}>
+						<Image
+							src={images[expandedImage]}
+							alt={`${product.name} ${expandedImage + 1}`}
+							fill
+							sizes="100vw"
+							quality={100}
+							style={{ objectFit: "contain" }}
+							priority
+						/>
+					</div>
+				</div>
+			)}
+
 			<div className={styles.container}>
 				<div className={styles.wrapper}>
 					{/* Back Button */}
@@ -253,7 +383,7 @@ export default function ProductPage() {
 						</div>
 						{images.length > 1 && (
 							<div className={styles.thumbnails}>
-								{images.map((img, index) => (
+								{images.slice(0, 2).map((img, index) => (
 									<button
 										key={index}
 										className={`${styles.thumbnail} ${
@@ -272,6 +402,26 @@ export default function ProductPage() {
 										/>
 									</button>
 								))}
+								{images.length > 2 && (
+									<button
+										className={`${styles.thumbnail} ${styles.showAllThumbnail}`}
+										onClick={handleGalleryOpen}
+										aria-label="View all images"
+									>
+										<Image
+											src={images[2]}
+											alt={`${product.name} 3`}
+											fill
+											sizes="100px"
+											quality={60}
+											style={{ objectFit: "cover" }}
+										/>
+										<div className={styles.showAllOverlay}>
+											<span className={styles.showAllText}>+{images.length - 2}</span>
+											<span className={styles.showAllLabel}>View All</span>
+										</div>
+									</button>
+								)}
 							</div>
 						)}
 					</div>

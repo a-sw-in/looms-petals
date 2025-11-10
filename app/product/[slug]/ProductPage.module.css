@@ -147,6 +147,212 @@
 	object-fit: cover;
 }
 
+.showAllThumbnail {
+	position: relative;
+}
+
+.showAllOverlay {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(255, 255, 255, 0.85);
+	backdrop-filter: blur(4px);
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	transition: all 0.3s ease;
+}
+
+.showAllThumbnail:hover .showAllOverlay {
+	background: rgba(122, 45, 45, 0.9);
+}
+
+.showAllText {
+	font-size: 24px;
+	font-weight: 900;
+	color: #7a2d2d;
+	transition: color 0.3s ease;
+}
+
+.showAllThumbnail:hover .showAllText {
+	color: white;
+}
+
+.showAllLabel {
+	font-size: 12px;
+	font-weight: 700;
+	color: #333;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	transition: color 0.3s ease;
+}
+
+.showAllThumbnail:hover .showAllLabel {
+	color: white;
+}
+
+/* Gallery Modal */
+.galleryModal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.9);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1000;
+	padding: 20px;
+	animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+	from {
+		opacity: 0;
+	}
+	to {
+		opacity: 1;
+	}
+}
+
+.galleryContent {
+	background: white;
+	border-radius: 20px;
+	max-width: 1200px;
+	width: 100%;
+	max-height: 90vh;
+	overflow-y: auto;
+	padding: 40px;
+	position: relative;
+	animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+	from {
+		transform: translateY(50px);
+		opacity: 0;
+	}
+	to {
+		transform: translateY(0);
+		opacity: 1;
+	}
+}
+
+.galleryClose {
+	position: absolute;
+	top: 20px;
+	right: 20px;
+	width: 40px;
+	height: 40px;
+	border-radius: 50%;
+	background: #7a2d2d;
+	color: white;
+	border: none;
+	font-size: 24px;
+	font-weight: 700;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	z-index: 10;
+}
+
+.galleryClose:hover {
+	background: #5a1f1f;
+	transform: rotate(90deg);
+}
+
+.galleryGrid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+	gap: 20px;
+	margin-top: 20px;
+}
+
+.galleryItem {
+	position: relative;
+	aspect-ratio: 4 / 5;
+	border-radius: 12px;
+	overflow: hidden;
+	cursor: pointer;
+	transition: all 0.3s ease;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.galleryItem:hover {
+	transform: scale(1.05);
+	box-shadow: 0 8px 24px rgba(122, 45, 45, 0.3);
+}
+
+/* Expanded Image Modal */
+.expandedModal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.95);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	z-index: 1001;
+	padding: 20px;
+	animation: fadeIn 0.3s ease;
+}
+
+.expandedClose {
+	position: fixed;
+	top: 20px;
+	right: 20px;
+	width: 50px;
+	height: 50px;
+	border-radius: 50%;
+	background: white;
+	color: #7a2d2d;
+	border: none;
+	font-size: 28px;
+	font-weight: 700;
+	cursor: pointer;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	transition: all 0.3s ease;
+	z-index: 1002;
+	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.expandedClose:hover {
+	background: #7a2d2d;
+	color: white;
+	transform: rotate(90deg);
+}
+
+.expandedImageWrapper {
+	position: relative;
+	width: 100%;
+	height: 100%;
+	max-width: 1400px;
+	max-height: 90vh;
+	animation: zoomIn 0.3s ease;
+}
+
+@keyframes zoomIn {
+	from {
+		transform: scale(0.8);
+		opacity: 0;
+	}
+	to {
+		transform: scale(1);
+		opacity: 1;
+	}
+}
+
 /* Details Section */
 .detailsSection {
 	display: flex;
@@ -497,6 +703,39 @@
 
 	.thumbnails {
 		grid-template-columns: repeat(3, 1fr);
+	}
+
+	.galleryContent {
+		padding: 30px 20px;
+	}
+
+	.galleryGrid {
+		grid-template-columns: 1fr;
+		gap: 16px;
+	}
+
+	.galleryItem {
+		aspect-ratio: 4 / 5;
+	}
+
+	.galleryItem:hover {
+		transform: none;
+	}
+
+	.galleryItem:active {
+		transform: scale(0.98);
+	}
+
+	.expandedClose {
+		top: 10px;
+		right: 10px;
+		width: 44px;
+		height: 44px;
+		font-size: 24px;
+	}
+
+	.expandedImageWrapper {
+		max-height: 85vh;
 	}
 
 	.infoCards {
