@@ -1,30 +1,16 @@
 "use client";
 
-import Image from "next/image";
 import { useMemo, useState } from "react";
 import styles from "./SectionCarousel.module.css";
-import { carouselData as baseData } from "./carouselData";
 
-function ytEmbedUrl(idOrUrl: string) {
-	// Accept raw id or full URL (shorts/watch). Extract the 11-char id when possible.
-	try {
-		const m = idOrUrl.match(/[a-zA-Z0-9_-]{11}/);
-		const id = m ? m[0] : idOrUrl;
-		const params = new URLSearchParams({
-			autoplay: "1",
-			mute: "1",
-			loop: "1",
-			controls: "0",
-			modestbranding: "1",
-			rel: "0",
-			playlist: id, // needed for loop
-			playsinline: "1",
-		});
-		return `https://www.youtube.com/embed/${id}?${params.toString()}`;
-	} catch {
-		return idOrUrl;
-	}
-}
+// List of videos in public/videos folder
+const videoFiles = [
+	"Duppattawaaali🥻🥻Cc-@zaith_designer_boutique.mp4",
+	"get.mp4",
+	"SnapInsta.to_AQOle-lA8bb_y0IIOn_PuTUPU1GeP_ymBYORLBxKk-KIgMio-_K-K0bdi4oe3_7w9NqvSdjZN-Lvq4h6S2dJYlerQeUgzgw3lg9w3mg.mp4",
+	"SnapInsta.to_AQOXJdSzke14mXgYD9MnuYXQH9F0CzYxMdCLpU2cxVs1ymIogEEEVbKIC5oU7A6NmSUvtCkCsp_tU0F9E6hojZrbJar98NRw_yuXhRQ.mp4",
+	"SnapInsta.to_AQPS78crYEHyHAVLkptiTVxdxXWdzvgtWaa15GdILrvlxFMuStgIBIr2qoZC7ayrhxFS1CtvHwZ2Uqr-ffUDUUE82b4QttlzPq6IuLk.mp4"
+];
 
 // Simple chevron icons
 function Chevron({ dir = "left" }: { dir?: "left" | "right" }) {
@@ -36,17 +22,18 @@ function Chevron({ dir = "left" }: { dir?: "left" | "right" }) {
 }
 
 export default function Section() {
+	const [active, setActive] = useState(0);
+
 	// Ensure we at least have 5 items to achieve stacked look by looping
 	const data = useMemo(() => {
-		if (baseData.length >= 5) return baseData;
-		const dup: typeof baseData = [] as any;
+		if (videoFiles.length >= 5) return videoFiles;
+		const dup: string[] = [];
 		while (dup.length < 5) {
-			dup.push(...baseData);
+			dup.push(...videoFiles);
 		}
 		return dup.slice(0, 5);
 	}, []);
 
-	const [active, setActive] = useState(0);
 	const total = data.length;
 
 	const go = (dir: -1 | 1) => setActive((i) => (i + dir + total) % total);
@@ -66,7 +53,7 @@ export default function Section() {
 				</button>
 
 				{/* Cards - we render 5 visual positions based on active index */}
-				{data.map((slide, idx) => {
+				{data.map((videoFile, idx) => {
 					// Compute relative position to active (wrap-around)
 					let rel = (idx - active + total) % total; // 0 is active, 1 right1, 2 right2, ...
 					let cls = styles.cardActive;
@@ -77,44 +64,20 @@ export default function Section() {
 					else if (rel === total - 2) cls = styles.cardBehind2; // left2
 					else return null; // hide extra items further away
 
-											return (
-									<article key={idx} className={`${styles.card} ${cls}`}>
-										<div className={styles.media}>
-														{slide.youtube ? (
-															<iframe
-																src={ytEmbedUrl(slide.youtube)}
-																title={slide.title}
-																allow="autoplay; encrypted-media; picture-in-picture"
-																allowFullScreen
-																style={{ width: "100%", height: "100%", border: 0 }}
-															/>
-														) : slide.video ? (
-												<video
-													src={slide.video}
-													muted
-													autoPlay
-													loop
-													playsInline
-													preload="metadata"
-													aria-label={slide.title}
-												/>
-											) : (
-												<Image
-													src={slide.image || "/Images/Home.png"}
-													alt={slide.title}
-													fill
-													sizes="(max-width: 1100px) 90vw, 1100px"
-													style={{ objectFit: "cover" }}
-													priority={idx === active}
-												/>
-											)}
-										</div>
-										<div className={styles.caption}>
-											<strong>{slide.title}</strong>
-											<div>{slide.description}</div>
-										</div>
-									</article>
-								);
+					return (
+						<article key={idx} className={`${styles.card} ${cls}`}>
+							<div className={styles.media}>
+								<video
+									src={`/videos/${videoFile}`}
+									muted
+									autoPlay
+									loop
+									playsInline
+									preload="metadata"
+								/>
+							</div>
+						</article>
+					);
 				})}
 
 				<div className={styles.indicators}>

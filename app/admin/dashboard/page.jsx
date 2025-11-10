@@ -8,9 +8,13 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
+  const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'reels'
   const [showModal, setShowModal] = useState(false);
+  const [showReelModal, setShowReelModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [editingReel, setEditingReel] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -24,11 +28,17 @@ export default function AdminDashboard() {
     type: 'clothing',
     is_featured: false,
   });
+  const [reelFormData, setReelFormData] = useState({
+    video_url: '',
+    title: '',
+    description: '',
+  });
   const [imageInput, setImageInput] = useState('');
 
   useEffect(() => {
     checkAuth();
     fetchProducts();
+    fetchReels();
   }, []);
 
   const checkAuth = async () => {
@@ -56,6 +66,18 @@ export default function AdminDashboard() {
       }
     } catch (error) {
       console.error('Failed to fetch products:', error);
+    }
+  };
+
+  const fetchReels = async () => {
+    try {
+      const response = await fetch('/api/admin/reels');
+      const data = await response.json();
+      if (data.success) {
+        setReels(data.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch reels:', error);
     }
   };
 
@@ -178,6 +200,70 @@ export default function AdminDashboard() {
     });
   };
 
+  // Reel Management Functions
+  const handleReelSubmit = async (e) => {
+    e.preventDefault();
+    const url = editingReel
+      ? `/api/admin/reels?id=${editingReel.id}`
+      : '/api/admin/reels';
+    const method = editingReel ? 'PUT' : 'POST';
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(reelFormData),
+      });
+
+      if (response.ok) {
+        setShowReelModal(false);
+        setEditingReel(null);
+        resetReelForm();
+        fetchReels();
+      }
+    } catch (error) {
+      console.error('Failed to save reel:', error);
+    }
+  };
+
+  const handleReelEdit = (reel) => {
+    setEditingReel(reel);
+    setReelFormData({
+      video_url: reel.video_url,
+      title: reel.title,
+      description: reel.description || '',
+    });
+    setShowReelModal(true);
+  };
+
+  const handleReelDelete = async (id) => {
+    if (!confirm('Are you sure you want to delete this reel?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/reels?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchReels();
+      }
+    } catch (error) {
+      console.error('Failed to delete reel:', error);
+    }
+  };
+
+  const resetReelForm = () => {
+    setReelFormData({
+      video_url: '',
+      title: '',
+      description: '',
+    });
+  };
+
+  const handleReelChange = (e) => {
+    setReelFormData({ ...reelFormData, [e.target.name]: e.target.value });
+  };
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -206,22 +292,41 @@ export default function AdminDashboard() {
 
       {/* Main Content */}
       <main className={styles.main}>
-        <div className={styles.toolbar}>
-          <h2 className={styles.pageTitle}>Product Management</h2>
+        {/* Tab Navigation */}
+        <div className={styles.tabNav}>
           <button
-            onClick={() => {
-              resetForm();
-              setEditingProduct(null);
-              setShowModal(true);
-            }}
-            className={styles.addBtn}
+            onClick={() => setActiveTab('products')}
+            className={`${styles.tabBtn} ${activeTab === 'products' ? styles.tabActive : ''}`}
           >
-            + Add Product
+            Products ({products.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('reels')}
+            className={`${styles.tabBtn} ${activeTab === 'reels' ? styles.tabActive : ''}`}
+          >
+            Instagram Reels ({reels.length})
           </button>
         </div>
 
-        {/* Products Grid */}
-        <div className={styles.grid}>
+        {/* Products Tab */}
+        {activeTab === 'products' && (
+          <>
+            <div className={styles.toolbar}>
+              <h2 className={styles.pageTitle}>Product Management</h2>
+              <button
+                onClick={() => {
+                  resetForm();
+                  setEditingProduct(null);
+                  setShowModal(true);
+                }}
+                className={styles.addBtn}
+              >
+                + Add Product
+              </button>
+            </div>
+
+            {/* Products Grid */}
+            <div className={styles.grid}>
           {products.map((product) => {
             // Parse image_url to get first image
             let imageUrl = 'https://picsum.photos/400/600';
@@ -290,9 +395,144 @@ export default function AdminDashboard() {
             <p>No products found. Add your first product!</p>
           </div>
         )}
+          </>
+        )}
+
+        {/* Reels Tab */}
+        {activeTab === 'reels' && (
+          <>
+            <div className={styles.toolbar}>
+              <h2 className={styles.pageTitle}>Instagram Reels Management</h2>
+              <button
+                onClick={() => {
+                  resetReelForm();
+                  setEditingReel(null);
+                  setShowReelModal(true);
+                }}
+                className={styles.addBtn}
+              >
+                + Add Reel
+              </button>
+            </div>
+
+            {/* Reels Grid */}
+            <div className={styles.grid}>
+              {reels.map((reel) => (
+                <div key={reel.id} className={styles.card}>
+                  <div className={styles.cardImage}>
+                    <video
+                      src={reel.video_url}
+                      style={{ width: '100%', height: '400px', objectFit: 'cover' }}
+                      controls
+                      muted
+                    />
+                  </div>
+                  <div className={styles.cardBody}>
+                    <h3 className={styles.cardTitle}>{reel.title}</h3>
+                    <p className={styles.cardCategory}>{reel.description}</p>
+                    <div className={styles.cardMeta}>
+                      <span className={styles.metaItem} style={{ fontSize: '12px', wordBreak: 'break-all' }}>
+                        {reel.video_url}
+                      </span>
+                    </div>
+                    <div className={styles.cardActions}>
+                      <button
+                        onClick={() => handleReelEdit(reel)}
+                        className={styles.editBtn}
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => handleReelDelete(reel.id)}
+                        className={styles.deleteBtn}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {reels.length === 0 && (
+              <div className={styles.emptyState}>
+                <p>No reels found. Add your first Instagram reel!</p>
+              </div>
+            )}
+          </>
+        )}
       </main>
 
-      {/* Modal */}
+      {/* Reel Modal */}
+      {showReelModal && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent}>
+            <div className={styles.modalHeader}>
+              <h2>{editingReel ? 'Edit' : 'Add'} Instagram Reel</h2>
+              <button
+                onClick={() => setShowReelModal(false)}
+                className={styles.closeBtn}
+              >
+                ×
+              </button>
+            </div>
+            <form onSubmit={handleReelSubmit} className={styles.form}>
+              <div className={styles.formGroup}>
+                <label>Video URL (Google Drive Link) *</label>
+                <input
+                  type="url"
+                  name="video_url"
+                  value={reelFormData.video_url}
+                  onChange={handleReelChange}
+                  required
+                  placeholder="https://drive.google.com/..."
+                />
+                <small style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
+                  Paste the Google Drive video link (must be publicly accessible)
+                </small>
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Title *</label>
+                <input
+                  type="text"
+                  name="title"
+                  value={reelFormData.title}
+                  onChange={handleReelChange}
+                  required
+                  placeholder="Enter reel title"
+                />
+              </div>
+
+              <div className={styles.formGroup}>
+                <label>Description</label>
+                <textarea
+                  name="description"
+                  value={reelFormData.description}
+                  onChange={handleReelChange}
+                  rows="3"
+                  placeholder="Enter reel description (optional)"
+                />
+              </div>
+
+              <div className={styles.formActions}>
+                <button
+                  type="button"
+                  onClick={() => setShowReelModal(false)}
+                  className={styles.cancelBtn}
+                >
+                  Cancel
+                </button>
+                <button type="submit" className={styles.saveBtn}>
+                  {editingReel ? 'Update' : 'Create'} Reel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Product Modal */}
       {showModal && (
         <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
           <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
