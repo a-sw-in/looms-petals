@@ -30,12 +30,12 @@ export default function CardSection() {
 			const data = await response.json();
 			
 			if (data.success) {
-				// Filter out jewellery and get only clothing items, limit to 12 (3 rows x 4 cards)
-				const clothingProducts = data.data.filter((product: Product) => 
-					product.category.toLowerCase() !== 'jewellery' && 
-					product.category.toLowerCase() !== 'jewelry'
+				// Filter to get only jewellery items, limit to 12 (3 rows x 4 cards)
+				const jewelleryProducts = data.data.filter((product: Product) => 
+					product.category.toLowerCase() === 'jewellery' || 
+					product.category.toLowerCase() === 'jewelry'
 				).slice(0, 12);
-				setTrendingProducts(clothingProducts);
+				setTrendingProducts(jewelleryProducts);
 			}
 		} catch (error) {
 			console.error('Failed to fetch products:', error);
@@ -47,7 +47,7 @@ export default function CardSection() {
 	if (loading) {
 		return (
 			<section className={styles.wrapper}>
-				<h2 className={styles.heading}>OUR COLLECTION</h2>
+				<h2 className={styles.heading}>JEWELLERY COLLECTION</h2>
 				<div className={styles.grid}>
 					{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
 						<div key={i} className={styles.productCard}>
@@ -69,9 +69,9 @@ export default function CardSection() {
 	if (trendingProducts.length === 0) {
 		return (
 			<section className={styles.wrapper}>
-				<h2 className={styles.heading}>OUR COLLECTION</h2>
+				<h2 className={styles.heading}>JEWELLERY COLLECTION</h2>
 				<div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
-					<p>No products available at the moment.</p>
+					<p>No jewellery products available at the moment.</p>
 				</div>
 			</section>
 		);
@@ -79,7 +79,7 @@ export default function CardSection() {
 
 	return (
 		<section className={styles.wrapper}>
-			<h2 className={styles.heading}>OUR COLLECTION</h2>
+			<h2 className={styles.heading}>JEWELLERY COLLECTION</h2>
 			<div className={styles.grid}>
 				{trendingProducts.map((product) => {
 					const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
@@ -153,9 +153,9 @@ export default function CardSection() {
 			<div className={styles.viewAllContainer}>
 				<button 
 					className={styles.viewAllButton}
-					onClick={() => router.push('/products')}
+					onClick={() => router.push('/jewellery')}
 				>
-					View All Products
+					View All Jewellery
 				</button>
 			</div>
 		</section>

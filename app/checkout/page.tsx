@@ -20,6 +20,18 @@ export default function CheckoutPage() {
   const [validating, setValidating] = useState(true);
   const [stockIssues, setStockIssues] = useState<StockValidation[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [formData, setFormData] = useState({
+    fullName: "",
+    email: "",
+    phone: "",
+    address: "",
+    city: "",
+    state: "",
+    pinCode: "",
+    country: "India",
+    paymentMethod: "cod",
+  });
+  const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   // Validate stock function
   const validateStock = async () => {
@@ -77,7 +89,102 @@ export default function CheckoutPage() {
     }
   }, []); // Run only on mount
 
+  const validateForm = () => {
+    const errors: Record<string, string> = {};
+
+    // Full Name validation
+    if (!formData.fullName.trim()) {
+      errors.fullName = "Full name is required";
+    } else if (formData.fullName.trim().length < 3) {
+      errors.fullName = "Name must be at least 3 characters";
+    }
+
+    // Email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!formData.email.trim()) {
+      errors.email = "Email is required";
+    } else if (!emailRegex.test(formData.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    // Phone validation
+    const phoneRegex = /^[6-9]\d{9}$/;
+    const cleanPhone = formData.phone.replace(/\D/g, "");
+    if (!formData.phone.trim()) {
+      errors.phone = "Phone number is required";
+    } else if (!phoneRegex.test(cleanPhone)) {
+      errors.phone = "Please enter a valid 10-digit Indian mobile number";
+    }
+
+    // Address validation
+    if (!formData.address.trim()) {
+      errors.address = "Address is required";
+    } else if (formData.address.trim().length < 10) {
+      errors.address = "Please enter a complete address (min 10 characters)";
+    }
+
+    // City validation
+    if (!formData.city.trim()) {
+      errors.city = "City is required";
+    } else if (formData.city.trim().length < 2) {
+      errors.city = "Please enter a valid city name";
+    }
+
+    // State validation
+    if (!formData.state.trim()) {
+      errors.state = "State is required";
+    } else if (formData.state.trim().length < 2) {
+      errors.state = "Please enter a valid state name";
+    }
+
+    // PIN Code validation
+    const pinRegex = /^[1-9][0-9]{5}$/;
+    if (!formData.pinCode.trim()) {
+      errors.pinCode = "PIN code is required";
+    } else if (!pinRegex.test(formData.pinCode)) {
+      errors.pinCode = "Please enter a valid 6-digit PIN code";
+    }
+
+    // Country validation
+    if (!formData.country.trim()) {
+      errors.country = "Country is required";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+    // Clear error for this field when user starts typing
+    if (formErrors[name]) {
+      setFormErrors((prev) => {
+        const newErrors = { ...prev };
+        delete newErrors[name];
+        return newErrors;
+      });
+    }
+  };
+
+  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }));
+  };
+
   const handlePlaceOrder = async () => {
+    // Validate form first
+    if (!validateForm()) {
+      // Scroll to first error
+      const firstErrorField = Object.keys(formErrors)[0];
+      const errorElement = document.querySelector(`[name="${firstErrorField}"]`);
+      if (errorElement) {
+        errorElement.scrollIntoView({ behavior: "smooth", block: "center" });
+      }
+      return;
+    }
+
     setIsPlacingOrder(true);
     
     // Re-validate stock before placing order
@@ -90,6 +197,7 @@ export default function CheckoutPage() {
     });
     
     // TODO: Implement actual order placement logic
+    console.log("Order data:", { formData, items, total: getTotalPrice() });
     alert("Order placed successfully! (Demo mode)");
     
     setIsPlacingOrder(false);
@@ -227,48 +335,137 @@ export default function CheckoutPage() {
           {/* Checkout Form */}
           <div className={styles.formSection}>
             <h2>Delivery Information</h2>
-            <form className={styles.form}>
+            <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
               <div className={styles.formGroup}>
                 <label>Full Name *</label>
-                <input type="text" placeholder="Enter your full name" required />
+                <input 
+                  type="text" 
+                  name="fullName"
+                  placeholder="Enter your full name"
+                  value={formData.fullName}
+                  onChange={handleInputChange}
+                  className={formErrors.fullName ? styles.errorInput : ""}
+                  required 
+                />
+                {formErrors.fullName && (
+                  <span className={styles.errorText}>{formErrors.fullName}</span>
+                )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Email Address *</label>
-                <input type="email" placeholder="your@email.com" required />
+                <input 
+                  type="email" 
+                  name="email"
+                  placeholder="your@email.com"
+                  value={formData.email}
+                  onChange={handleInputChange}
+                  className={formErrors.email ? styles.errorInput : ""}
+                  required 
+                />
+                {formErrors.email && (
+                  <span className={styles.errorText}>{formErrors.email}</span>
+                )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Phone Number *</label>
-                <input type="tel" placeholder="+91 XXXXX XXXXX" required />
+                <input 
+                  type="tel" 
+                  name="phone"
+                  placeholder="+91 XXXXX XXXXX"
+                  value={formData.phone}
+                  onChange={handleInputChange}
+                  className={formErrors.phone ? styles.errorInput : ""}
+                  required 
+                />
+                {formErrors.phone && (
+                  <span className={styles.errorText}>{formErrors.phone}</span>
+                )}
               </div>
 
               <div className={styles.formGroup}>
                 <label>Address *</label>
-                <textarea placeholder="Street address" rows={3} required />
+                <textarea 
+                  name="address"
+                  placeholder="Street address"
+                  rows={3}
+                  value={formData.address}
+                  onChange={handleInputChange}
+                  className={formErrors.address ? styles.errorInput : ""}
+                  required 
+                />
+                {formErrors.address && (
+                  <span className={styles.errorText}>{formErrors.address}</span>
+                )}
               </div>
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>City *</label>
-                  <input type="text" placeholder="City" required />
+                  <input 
+                    type="text" 
+                    name="city"
+                    placeholder="City"
+                    value={formData.city}
+                    onChange={handleInputChange}
+                    className={formErrors.city ? styles.errorInput : ""}
+                    required 
+                  />
+                  {formErrors.city && (
+                    <span className={styles.errorText}>{formErrors.city}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
                   <label>State *</label>
-                  <input type="text" placeholder="State" required />
+                  <input 
+                    type="text" 
+                    name="state"
+                    placeholder="State"
+                    value={formData.state}
+                    onChange={handleInputChange}
+                    className={formErrors.state ? styles.errorInput : ""}
+                    required 
+                  />
+                  {formErrors.state && (
+                    <span className={styles.errorText}>{formErrors.state}</span>
+                  )}
                 </div>
               </div>
 
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>PIN Code *</label>
-                  <input type="text" placeholder="000000" required />
+                  <input 
+                    type="text" 
+                    name="pinCode"
+                    placeholder="000000"
+                    value={formData.pinCode}
+                    onChange={handleInputChange}
+                    className={formErrors.pinCode ? styles.errorInput : ""}
+                    maxLength={6}
+                    required 
+                  />
+                  {formErrors.pinCode && (
+                    <span className={styles.errorText}>{formErrors.pinCode}</span>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
                   <label>Country *</label>
-                  <input type="text" placeholder="India" defaultValue="India" required />
+                  <input 
+                    type="text" 
+                    name="country"
+                    placeholder="India"
+                    value={formData.country}
+                    onChange={handleInputChange}
+                    className={formErrors.country ? styles.errorInput : ""}
+                    required 
+                  />
+                  {formErrors.country && (
+                    <span className={styles.errorText}>{formErrors.country}</span>
+                  )}
                 </div>
               </div>
 
@@ -276,11 +473,23 @@ export default function CheckoutPage() {
                 <h3>Payment Method</h3>
                 <div className={styles.paymentOptions}>
                   <label className={styles.paymentOption}>
-                    <input type="radio" name="payment" value="cod" defaultChecked />
+                    <input 
+                      type="radio" 
+                      name="payment" 
+                      value="cod"
+                      checked={formData.paymentMethod === "cod"}
+                      onChange={handlePaymentChange}
+                    />
                     <span>Cash on Delivery</span>
                   </label>
                   <label className={styles.paymentOption}>
-                    <input type="radio" name="payment" value="online" />
+                    <input 
+                      type="radio" 
+                      name="payment" 
+                      value="online"
+                      checked={formData.paymentMethod === "online"}
+                      onChange={handlePaymentChange}
+                    />
                     <span>Online Payment (Coming Soon)</span>
                   </label>
                 </div>

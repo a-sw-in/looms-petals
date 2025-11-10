@@ -59,21 +59,6 @@ const WhatsAppFeedback = () => {
             </svg>
           </button>
         </div>
-
-        <div className={styles.infoBox}>
-          <div className={styles.infoItem}>
-            <span className={styles.infoIcon}>⚡</span>
-            <span className={styles.infoText}>Quick Response</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoIcon}>🔒</span>
-            <span className={styles.infoText}>Secure & Private</span>
-          </div>
-          <div className={styles.infoItem}>
-            <span className={styles.infoIcon}>24/7</span>
-            <span className={styles.infoText}>Always Available</span>
-          </div>
-        </div>
       </div>
     </div>
   )

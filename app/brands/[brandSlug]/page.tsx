@@ -72,6 +72,21 @@ export default function BrandProductsPage() {
     router.push(`/product/${slug}-${product.id}`);
   };
 
+  // Helper function to parse image URL
+  const getImageUrl = (imageUrl: string, productId: number) => {
+    if (!imageUrl) return `https://picsum.photos/seed/${productId}/600/700`;
+    
+    try {
+      const parsed = JSON.parse(imageUrl);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed[0];
+      }
+      return imageUrl;
+    } catch {
+      return imageUrl;
+    }
+  };
+
   if (loading) {
     return (
       <div className={styles.container}>
@@ -114,7 +129,7 @@ export default function BrandProductsPage() {
             >
               <div className={styles.imageWrapper}>
                 <Image
-                  src={product.image_url || `https://picsum.photos/seed/${product.id}/600/700`}
+                  src={getImageUrl(product.image_url, product.id)}
                   alt={product.name}
                   fill
                   sizes="(max-width: 768px) 50vw, 33vw"

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import styles from "./CardSection.module.css";
+import styles from "./products.module.css";
 
 type Product = {
 	id: number;
@@ -15,27 +15,27 @@ type Product = {
 	stock: number;
 };
 
-export default function CardSection() {
+export default function ProductsPage() {
 	const router = useRouter();
-	const [trendingProducts, setTrendingProducts] = useState<Product[]>([]);
+	const [products, setProducts] = useState<Product[]>([]);
 	const [loading, setLoading] = useState(true);
 
 	useEffect(() => {
-		fetchTrendingProducts();
+		fetchAllProducts();
 	}, []);
 
-	const fetchTrendingProducts = async () => {
+	const fetchAllProducts = async () => {
 		try {
 			const response = await fetch('/api/admin/products');
 			const data = await response.json();
 			
 			if (data.success) {
-				// Filter out jewellery and get only clothing items, limit to 12 (3 rows x 4 cards)
+				// Filter out jewellery and show only clothing items
 				const clothingProducts = data.data.filter((product: Product) => 
 					product.category.toLowerCase() !== 'jewellery' && 
 					product.category.toLowerCase() !== 'jewelry'
-				).slice(0, 12);
-				setTrendingProducts(clothingProducts);
+				);
+				setProducts(clothingProducts);
 			}
 		} catch (error) {
 			console.error('Failed to fetch products:', error);
@@ -46,10 +46,13 @@ export default function CardSection() {
 
 	if (loading) {
 		return (
-			<section className={styles.wrapper}>
-				<h2 className={styles.heading}>OUR COLLECTION</h2>
+			<main className={styles.container}>
+				<div className={styles.header}>
+					<h1 className={styles.title}>All Products</h1>
+					<p className={styles.subtitle}>Loading products...</p>
+				</div>
 				<div className={styles.grid}>
-					{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
+					{[...Array(12)].map((_, i) => (
 						<div key={i} className={styles.productCard}>
 							<div className={styles.imageWrapper} style={{ background: '#f0f0f0' }}>
 								<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
@@ -62,26 +65,38 @@ export default function CardSection() {
 						</div>
 					))}
 				</div>
-			</section>
+			</main>
 		);
 	}
 
-	if (trendingProducts.length === 0) {
+	if (products.length === 0) {
 		return (
-			<section className={styles.wrapper}>
-				<h2 className={styles.heading}>OUR COLLECTION</h2>
-				<div style={{ textAlign: 'center', padding: '60px 20px', color: '#666' }}>
+			<main className={styles.container}>
+				<div className={styles.header}>
+					<h1 className={styles.title}>All Products</h1>
+				</div>
+				<div style={{ textAlign: 'center', padding: '80px 20px', color: '#666' }}>
 					<p>No products available at the moment.</p>
 				</div>
-			</section>
+			</main>
 		);
 	}
 
 	return (
-		<section className={styles.wrapper}>
-			<h2 className={styles.heading}>OUR COLLECTION</h2>
+		<main className={styles.container}>
+			<button 
+				className={styles.backButton}
+				onClick={() => router.back()}
+			>
+				← Back
+			</button>
+			<div className={styles.header}>
+				<h1 className={styles.title}>All Products</h1>
+				<p className={styles.subtitle}>Browse our complete collection of {products.length} products</p>
+			</div>
+			
 			<div className={styles.grid}>
-				{trendingProducts.map((product) => {
+				{products.map((product) => {
 					const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 					
 					// Parse image_url to get the first image if it's an array
@@ -150,14 +165,6 @@ export default function CardSection() {
 					);
 				})}
 			</div>
-			<div className={styles.viewAllContainer}>
-				<button 
-					className={styles.viewAllButton}
-					onClick={() => router.push('/products')}
-				>
-					View All Products
-				</button>
-			</div>
-		</section>
+		</main>
 	);
 }

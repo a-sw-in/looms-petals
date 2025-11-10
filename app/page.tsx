@@ -8,6 +8,7 @@ import ScrollTrendJewel from "./components/scrollTrendJewel";
 import WhatsAppFeedback from "./components/WhatsAppFeedback";
 import Footer from "./components/Footer";
 import { Navbar } from "./components/Navbar";
+import CardSectionJewel from "./components/cardSectionJewel";
 
 
 export default function Home() {
@@ -17,11 +18,12 @@ export default function Home() {
       <Carousels />
       <Price />
       <CardSection />
+      <CardSectionJewel />
       <Trend />
       <ScrollTrend />
       <ScrollTrendJewel />
-      <WhatsAppFeedback />
       <Section />
+      <WhatsAppFeedback />
       <Footer />
     </div>
   );
