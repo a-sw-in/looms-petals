@@ -1,20 +1,22 @@
 /* Price section - Wardrobe Favourites cards */
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap');
 
 .wrapper {
   width: 100%;
-  padding: 60px 0;
+  padding: 80px 0;
   background: white;
-  border-bottom: 1px solid #e5e7eb;
+  font-family: 'Outfit', sans-serif;
 }
 
 .header {
   text-align: center;
-  font-size: clamp(20px, 2.8vw, 28px);
+  font-size: clamp(2rem, 3.5vw, 3rem);
   font-weight: 800;
-  color: #1f2937;
-  margin: 0 0 48px 0;
+  color: #2d1a1a;
+  margin: 0 0 60px 0;
   padding: 0 4vw;
   letter-spacing: -0.02em;
+  text-transform: uppercase;
 }
 
 .scrollContainer {
@@ -23,7 +25,7 @@
   overflow-y: hidden;
   -ms-overflow-style: none;
   scrollbar-width: none;
-  padding-bottom: 10px;
+  padding: 20px 0 40px;
 }
 
 .scrollContainer::-webkit-scrollbar {
@@ -32,102 +34,75 @@
 
 .track {
   display: flex;
-  gap: 24px;
+  gap: 32px;
   padding: 0 4vw;
   min-width: min-content;
 }
 
 .card {
   flex: 0 0 auto;
-  min-width: clamp(160px, 18vw, 220px);
-  padding: 32px 28px;
-  border-radius: 24px;
+  min-width: clamp(200px, 22vw, 260px);
+  padding: 40px 32px;
+  border-radius: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   text-align: center;
-  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.06);
-  transition: all 0.3s ease;
-  border: 2px solid transparent;
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid rgba(122, 45, 45, 0.1);
+  box-shadow: 0 10px 30px rgba(122, 45, 45, 0.05);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .card:hover {
-  transform: translateY(-6px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-  border-color: rgba(0, 0, 0, 0.05);
+  transform: translateY(-10px);
+  background: white;
+  border-color: #c58d55;
+  box-shadow: 0 25px 50px rgba(122, 45, 45, 0.12);
 }
 
 .category {
-  font-size: clamp(16px, 2vw, 20px);
+  font-size: clamp(1.1rem, 2vw, 1.5rem);
   font-weight: 700;
-  color: #1f2937;
-  margin: 0 0 20px 0;
+  color: #4a1a1a;
+  margin: 0 0 24px 0;
   line-height: 1.2;
 }
 
 .priceLabel {
-  font-size: 12px;
-  font-weight: 700;
-  color: #6b7280;
-  letter-spacing: 1.2px;
+  font-size: 10px;
+  font-weight: 800;
+  color: #8a6b6b;
+  letter-spacing: 0.15em;
   margin-bottom: 8px;
   text-transform: uppercase;
 }
 
 .price {
-  font-size: clamp(24px, 2.5vw, 32px);
+  font-size: clamp(1.75rem, 2.5vw, 2.25rem);
   font-weight: 900;
-  color: #111827;
+  color: #7a2d2d;
 }
 
 @media (max-width: 768px) {
   .wrapper {
-    padding: 32px 0;
+    padding: 50px 0;
   }
 
   .header {
-    font-size: clamp(16px, 2vw, 20px);
-    margin-bottom: 24px;
+    font-size: 1.75rem;
+    margin-bottom: 32px;
   }
 
   .track {
-    gap: 16px;
-    padding: 0 3vw;
+    gap: 20px;
   }
 
   .card {
-    min-width: clamp(120px, 28vw, 160px);
-    padding: 20px 16px;
-  }
-}
-
-@media (max-width: 480px) {
-  .wrapper {
-    padding: 24px 0;
-  }
-
-  .header {
-    font-size: 14px;
-    margin-bottom: 20px;
-  }
-
-  .track {
-    gap: 12px;
-    padding: 0 2.5vw;
-  }
-
-  .card {
-    min-width: clamp(100px, 35vw, 140px);
-    padding: 16px 12px;
-  }
-
-  .category {
-    font-size: 12px;
-    margin-bottom: 8px;
-  }
-
-  .price {
-    font-size: 18px;
+    min-width: 180px;
+    padding: 30px 20px;
   }
 }

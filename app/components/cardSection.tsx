@@ -28,11 +28,11 @@ export default function CardSection() {
 		try {
 			const response = await fetch('/api/admin/products');
 			const data = await response.json();
-			
+
 			if (data.success) {
 				// Filter out jewellery and get only clothing items, limit to 12 (3 rows x 4 cards)
-				const clothingProducts = data.data.filter((product: Product) => 
-					product.category.toLowerCase() !== 'jewellery' && 
+				const clothingProducts = data.data.filter((product: Product) =>
+					product.category.toLowerCase() !== 'jewellery' &&
 					product.category.toLowerCase() !== 'jewelry'
 				).slice(0, 12);
 				setTrendingProducts(clothingProducts);
@@ -83,7 +83,7 @@ export default function CardSection() {
 			<div className={styles.grid}>
 				{trendingProducts.map((product) => {
 					const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-					
+
 					// Parse image_url to get the first image if it's an array
 					let imageUrl = `https://picsum.photos/seed/${product.id}/600/700`;
 					if (product.image_url) {
@@ -100,24 +100,24 @@ export default function CardSection() {
 					const discount = product.discount_price
 						? Math.round(((product.price - product.discount_price) / product.price) * 100)
 						: 0;
-					
+
 					return (
 						<div
 							key={product.id}
 							className={styles.productCard}
 							onClick={() => router.push(`/product/${slug}-${product.id}`)}
 						>
-						<div className={styles.imageWrapper}>
-							<img
-								src={imageUrl}
-								alt={product.name}
-								className={styles.productImage}
-								onError={(e) => {
-									console.error(`Failed to load image for ${product.name}: ${imageUrl}`);
-									e.currentTarget.src = `https://picsum.photos/seed/${product.id}/600/700`;
-								}}
-							/>
-							{product.status !== "normal" && product.status !== "trending" && (
+							<div className={styles.imageWrapper}>
+								<img
+									src={imageUrl}
+									alt={product.name}
+									className={styles.productImage}
+									onError={(e) => {
+										console.error(`Failed to load image for ${product.name}: ${imageUrl}`);
+										e.currentTarget.src = `https://picsum.photos/seed/${product.id}/600/700`;
+									}}
+								/>
+								{product.status !== "normal" && product.status !== "trending" && (
 									<span className={`${styles.badge} ${styles[product.status]}`}>
 										{product.status.replace("_", " ").toUpperCase()}
 									</span>
@@ -130,7 +130,7 @@ export default function CardSection() {
 							<div className={styles.details}>
 								<h3 className={styles.productName}>{product.name}</h3>
 								<p className={styles.categoryText}>{product.category}</p>
-								
+
 								<div className={styles.priceSection}>
 									<div className={styles.priceRow}>
 										<span className={styles.currentPrice}>
@@ -155,12 +155,12 @@ export default function CardSection() {
 				})}
 			</div>
 			<div className={styles.viewAllContainer}>
-				<button 
-					className={styles.viewAllButton}
+				<span
+					className={styles.viewAllLink}
 					onClick={() => router.push('/products')}
 				>
-					View All Products
-				</button>
+					View All Products →
+				</span>
 			</div>
 		</section>
 	);

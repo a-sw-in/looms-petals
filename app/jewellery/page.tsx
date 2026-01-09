@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./jewellery.module.css";
+import { Navbar } from "../components/Navbar";
+import Footer from "../components/Footer";
 
 type Product = {
 	id: number;
@@ -28,20 +30,20 @@ export default function JewelleryPage() {
 		try {
 			const response = await fetch('/api/admin/products');
 			const data = await response.json();
-			
+
 			if (data.success) {
 				console.log('Total products:', data.data.length);
 				console.log('Sample categories:', data.data.slice(0, 5).map((p: any) => p.category));
-				
+
 				// Filter to get only jewellery items
-				const jewelleryProducts = data.data.filter((product: Product) => 
-					product.category.toLowerCase() === 'jewellery' || 
+				const jewelleryProducts = data.data.filter((product: Product) =>
+					product.category.toLowerCase() === 'jewellery' ||
 					product.category.toLowerCase() === 'jewelry'
 				);
-				
+
 				console.log('Jewellery products found:', jewelleryProducts.length);
 				console.log('Jewellery products:', jewelleryProducts);
-				
+
 				setProducts(jewelleryProducts);
 			}
 		} catch (error) {
@@ -90,94 +92,98 @@ export default function JewelleryPage() {
 	}
 
 	return (
-		<main className={styles.container}>
-			<button 
-				className={styles.backButton}
-				onClick={() => router.back()}
-			>
-				← Back
-			</button>
-			<div className={styles.header}>
-				<h1 className={styles.title}>Jewellery Collection</h1>
-				<p className={styles.subtitle}>Browse our complete collection of {products.length} jewellery items</p>
-			</div>
-			
-			<div className={styles.grid}>
-				{products.map((product) => {
-					const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-					
-					// Parse image_url to get the first image if it's an array
-					let imageUrl = `https://picsum.photos/seed/${product.id}/600/700`;
-					if (product.image_url) {
-						try {
-							const images = JSON.parse(product.image_url);
-							imageUrl = Array.isArray(images) && images.length > 0 && images[0]
-								? images[0]
-								: (product.image_url || imageUrl);
-						} catch {
-							imageUrl = product.image_url || imageUrl;
+		<>
+			<Navbar />
+			<main className={styles.container}>
+				<button
+					className={styles.backButton}
+					onClick={() => router.back()}
+				>
+					← Back
+				</button>
+				<div className={styles.header}>
+					<h1 className={styles.title}>Jewellery Collection</h1>
+					<p className={styles.subtitle}>Browse our complete collection of {products.length} jewellery items</p>
+				</div>
+
+				<div className={styles.grid}>
+					{products.map((product) => {
+						const slug = product.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
+
+						// Parse image_url to get the first image if it's an array
+						let imageUrl = `https://picsum.photos/seed/${product.id}/600/700`;
+						if (product.image_url) {
+							try {
+								const images = JSON.parse(product.image_url);
+								imageUrl = Array.isArray(images) && images.length > 0 && images[0]
+									? images[0]
+									: (product.image_url || imageUrl);
+							} catch {
+								imageUrl = product.image_url || imageUrl;
+							}
 						}
-					}
-					
-					console.log(`Product: ${product.name}, Image URL: ${imageUrl}`);
 
-					const discount = product.discount_price
-						? Math.round(((product.price - product.discount_price) / product.price) * 100)
-						: 0;
-					
-					return (
-						<div
-							key={product.id}
-							className={styles.productCard}
-							onClick={() => router.push(`/product/${slug}-${product.id}`)}
-						>
-							<div className={styles.imageWrapper}>
-								<img
-									src={imageUrl}
-									alt={product.name}
-									className={styles.productImage}
-									onError={(e) => {
-										console.error(`Failed to load image for ${product.name}: ${imageUrl}`);
-										e.currentTarget.src = `https://picsum.photos/seed/${product.id}/600/700`;
-									}}
-								/>
-								{product.status !== "normal" && product.status !== "trending" && (
-									<span className={`${styles.badge} ${styles[product.status]}`}>
-										{product.status.replace("_", " ").toUpperCase()}
-									</span>
-								)}
-								{discount > 0 && (
-									<span className={styles.discountBadge}>{discount}% OFF</span>
-								)}
-							</div>
+						console.log(`Product: ${product.name}, Image URL: ${imageUrl}`);
 
-							<div className={styles.details}>
-								<h3 className={styles.productName}>{product.name}</h3>
-								<p className={styles.categoryText}>{product.category}</p>
-								
-								<div className={styles.priceSection}>
-									<div className={styles.priceRow}>
-										<span className={styles.currentPrice}>
-											₹{product.discount_price || product.price}
+						const discount = product.discount_price
+							? Math.round(((product.price - product.discount_price) / product.price) * 100)
+							: 0;
+
+						return (
+							<div
+								key={product.id}
+								className={styles.productCard}
+								onClick={() => router.push(`/product/${slug}-${product.id}`)}
+							>
+								<div className={styles.imageWrapper}>
+									<img
+										src={imageUrl}
+										alt={product.name}
+										className={styles.productImage}
+										onError={(e) => {
+											console.error(`Failed to load image for ${product.name}: ${imageUrl}`);
+											e.currentTarget.src = `https://picsum.photos/seed/${product.id}/600/700`;
+										}}
+									/>
+									{product.status !== "normal" && product.status !== "trending" && (
+										<span className={`${styles.badge} ${styles[product.status]}`}>
+											{product.status.replace("_", " ").toUpperCase()}
 										</span>
-										{product.discount_price && (
-											<span className={styles.originalPrice}>₹{product.price}</span>
+									)}
+									{discount > 0 && (
+										<span className={styles.discountBadge}>{discount}% OFF</span>
+									)}
+								</div>
+
+								<div className={styles.details}>
+									<h3 className={styles.productName}>{product.name}</h3>
+									<p className={styles.categoryText}>{product.category}</p>
+
+									<div className={styles.priceSection}>
+										<div className={styles.priceRow}>
+											<span className={styles.currentPrice}>
+												₹{product.discount_price || product.price}
+											</span>
+											{product.discount_price && (
+												<span className={styles.originalPrice}>₹{product.price}</span>
+											)}
+										</div>
+									</div>
+
+									<div className={styles.stock}>
+										{product.stock > 0 ? (
+											<span className={styles.inStock}>In Stock ({product.stock})</span>
+										) : (
+											<span className={styles.outOfStock}>Out of Stock</span>
 										)}
 									</div>
 								</div>
-
-								<div className={styles.stock}>
-									{product.stock > 0 ? (
-										<span className={styles.inStock}>In Stock ({product.stock})</span>
-									) : (
-										<span className={styles.outOfStock}>Out of Stock</span>
-									)}
-								</div>
 							</div>
-						</div>
-					);
-				})}
-			</div>
-		</main>
+						);
+					})}
+				</div>
+			</main>
+			<Footer />
+		</>
 	);
 }

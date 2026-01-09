@@ -13,15 +13,15 @@ type PriceCard = {
 const usePriceData = (): PriceCard[] => {
 	return useMemo(
 		() => [
-			{ id: 1, category: "T-shirts", price: 599, bgColor: "#fce7f3" },
-			{ id: 2, category: "Shirts", price: 999, bgColor: "#fef3c7" },
-			{ id: 3, category: "Footwear", price: 1499, bgColor: "#fce7f3" },
-			{ id: 4, category: "Kidswear", price: 499, bgColor: "#fef3c7" },
-			{ id: 5, category: "Watches", price: 3499, bgColor: "#fce7f3" },
-			{ id: 6, category: "Handbags", price: 1499, bgColor: "#fef3c7" },
-			{ id: 7, category: "Denim", price: 999, bgColor: "#fce7f3" },
-			{ id: 8, category: "Dresses", price: 599, bgColor: "#fef3c7" },
-			{ id: 9, category: "Kurtas & Kurtis", price: 599, bgColor: "#fce7f3" },
+			{ id: 1, category: "T-shirts", price: 599, bgColor: "rgba(252, 231, 243, 0.4)" },
+			{ id: 2, category: "Shirts", price: 999, bgColor: "rgba(254, 243, 199, 0.4)" },
+			{ id: 3, category: "Footwear", price: 1499, bgColor: "rgba(252, 231, 243, 0.4)" },
+			{ id: 4, category: "Kidswear", price: 499, bgColor: "rgba(254, 243, 199, 0.4)" },
+			{ id: 5, category: "Watches", price: 3499, bgColor: "rgba(252, 231, 243, 0.4)" },
+			{ id: 6, category: "Handbags", price: 1499, bgColor: "rgba(254, 243, 199, 0.4)" },
+			{ id: 7, category: "Denim", price: 999, bgColor: "rgba(252, 231, 243, 0.4)" },
+			{ id: 8, category: "Dresses", price: 599, bgColor: "rgba(254, 243, 199, 0.4)" },
+			{ id: 9, category: "Kurtas & Kurtis", price: 599, bgColor: "rgba(252, 231, 243, 0.4)" },
 		],
 		[]
 	);
@@ -32,10 +32,6 @@ export default function Price() {
 
 	return (
 		<section className={styles.wrapper}>
-			<h2 className={styles.header}>
-				Wardrobe Favourites - Extra ₹1000 Off* | Use Code: SSDEAL
-			</h2>
-
 			<div className={styles.scrollContainer}>
 				<div className={styles.track}>
 					{items.map((item) => (

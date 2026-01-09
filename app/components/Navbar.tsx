@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import CartIcon from './CartIcon';
 
@@ -139,7 +140,9 @@ export function Navbar() {
         </button>
 
         <div className="tnq-brand">
-          <span className="tnq-brand-text">LOOMS & PETALS</span>
+          <Link href="/" className="tnq-brand-link">
+            <span className="tnq-brand-text">LOOMS & PETALS</span>
+          </Link>
         </div>
         <div className="tnq-row justify-center tnq-row-menu tnq-desktop-menu">
           {menu.map((m) => (
@@ -179,6 +182,15 @@ export function Navbar() {
                     className="tnq-account-menu-item"
                   >
                     <span>My Profile</span>
+                  </button>
+                  <button
+                    onClick={() => {
+                      router.push('/faq');
+                      setShowAccountMenu(false);
+                    }}
+                    className="tnq-account-menu-item"
+                  >
+                    <span>FAQ & Help</span>
                   </button>
                   <button
                     onClick={() => {
@@ -230,6 +242,15 @@ export function Navbar() {
         >
           <Icon.User />
           <span className="tnq-menu-label">My Account</span>
+        </button>
+        <button
+          className="tnq-mobile-menu-item"
+          onClick={() => {
+            router.push('/faq');
+            setMobileMenuOpen(false);
+          }}
+        >
+          <span className="tnq-menu-label">FAQ & Help</span>
         </button>
         <button
           className="tnq-mobile-menu-item"

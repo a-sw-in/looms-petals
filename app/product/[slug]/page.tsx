@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
@@ -5,6 +6,8 @@ import { useParams, useRouter } from "next/navigation";
 import Image from "next/image";
 import { useCart } from "../../context/CartContext";
 import styles from "./ProductPage.module.css";
+import { Navbar } from "../../components/Navbar";
+import Footer from "../../components/Footer";
 
 type Product = {
 	id: number;
@@ -46,7 +49,12 @@ export default function ProductPage() {
 	const [addingToCart, setAddingToCart] = useState(false);
 	const [showGallery, setShowGallery] = useState(false);
 	const [expandedImage, setExpandedImage] = useState<number | null>(null);
-	const [hoverTimer, setHoverTimer] = useState<NodeJS.Timeout | null>(null);
+
+	// Zoom State
+	const [zoom, setZoom] = useState(1);
+	const [position, setPosition] = useState({ x: 0, y: 0 });
+	const [isDragging, setIsDragging] = useState(false);
+	const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
 
 	const fetchProduct = useCallback(async (slug: string) => {
 		try {
@@ -81,7 +89,7 @@ export default function ProductPage() {
 
 	const images = useMemo(() => {
 		if (!product) return [];
-		
+
 		// Try to parse image_url if it's a JSON array
 		if (product.image_url) {
 			try {
@@ -94,7 +102,7 @@ export default function ProductPage() {
 				return [product.image_url];
 			}
 		}
-		
+
 		// Fallback to product.images array or placeholder
 		return product.images && product.images.length > 0
 			? product.images
@@ -123,46 +131,77 @@ export default function ProductPage() {
 
 	const handleGalleryClose = useCallback(() => {
 		setShowGallery(false);
-	}, []);
-
-	const handleImageExpand = useCallback((index: number) => {
-		setExpandedImage(index);
-	}, []);
-
-	const handleImageCollapse = useCallback(() => {
 		setExpandedImage(null);
 	}, []);
 
-	const handleGalleryImageHover = useCallback((index: number) => {
-		// Clear any existing timer
-		if (hoverTimer) {
-			clearTimeout(hoverTimer);
+	const handleZoom = useCallback((delta: number) => {
+		setZoom(prev => {
+			const next = prev + delta;
+			return Math.max(1, Math.min(5, next));
+		});
+	}, []);
+
+	const resetZoom = useCallback(() => {
+		setZoom(1);
+		setPosition({ x: 0, y: 0 });
+	}, []);
+
+	const handleImageExpand = useCallback((index: number) => {
+		resetZoom();
+		setExpandedImage(index);
+	}, [resetZoom]);
+
+	const handleImageCollapse = useCallback(() => {
+		setExpandedImage(null);
+		resetZoom();
+	}, [resetZoom]);
+
+	// Mouse events for zoom/pan
+	const handleWheel = useCallback((e: React.WheelEvent) => {
+		const delta = e.deltaY > 0 ? -0.5 : 0.5;
+		handleZoom(delta);
+	}, [handleZoom]);
+
+	const onMouseDown = useCallback((e: React.MouseEvent) => {
+		if (zoom > 1) {
+			setIsDragging(true);
+			setDragStart({ x: e.clientX - position.x, y: e.clientY - position.y });
 		}
+	}, [zoom, position]);
 
-		// Set a new timer for 2 seconds
-		const timer = setTimeout(() => {
-			setExpandedImage(index);
-		}, 1000);
-
-		setHoverTimer(timer);
-	}, [hoverTimer]);
-
-	const handleGalleryImageLeave = useCallback(() => {
-		// Clear the timer when mouse leaves
-		if (hoverTimer) {
-			clearTimeout(hoverTimer);
-			setHoverTimer(null);
+	const onMouseMove = useCallback((e: React.MouseEvent) => {
+		if (isDragging && zoom > 1) {
+			setPosition({
+				x: e.clientX - dragStart.x,
+				y: e.clientY - dragStart.y
+			});
 		}
-	}, [hoverTimer]);
+	}, [isDragging, zoom, dragStart]);
 
-	// Cleanup timer on unmount
-	useEffect(() => {
-		return () => {
-			if (hoverTimer) {
-				clearTimeout(hoverTimer);
-			}
-		};
-	}, [hoverTimer]);
+	const onMouseUp = useCallback(() => {
+		setIsDragging(false);
+	}, []);
+
+	// Touch events for zoom/pan
+	const onTouchStart = useCallback((e: React.TouchEvent) => {
+		if (e.touches.length === 1 && zoom > 1) {
+			setIsDragging(true);
+			setDragStart({
+				x: e.touches[0].clientX - position.x,
+				y: e.touches[0].clientY - position.y
+			});
+		}
+	}, [zoom, position]);
+
+	const onTouchMove = useCallback((e: React.TouchEvent) => {
+		if (isDragging && e.touches.length === 1 && zoom > 1) {
+			setPosition({
+				x: e.touches[0].clientX - dragStart.x,
+				y: e.touches[0].clientY - dragStart.y
+			});
+		}
+	}, [isDragging, zoom, dragStart]);
+
 
 	const handleAddToCart = useCallback(() => {
 		if (!product) return;
@@ -226,7 +265,7 @@ export default function ProductPage() {
 	// Calculate quantity already in cart
 	const quantityInCart = useMemo(() => {
 		if (!product) return 0;
-		
+
 		return items
 			.filter(
 				(item) =>
@@ -298,6 +337,7 @@ export default function ProductPage() {
 
 	return (
 		<>
+			<Navbar />
 			{/* SEO: Structured Data */}
 			<script
 				type="application/ld+json"
@@ -317,8 +357,6 @@ export default function ProductPage() {
 									key={index}
 									className={styles.galleryItem}
 									onClick={() => handleImageExpand(index)}
-									onMouseEnter={() => handleGalleryImageHover(index)}
-									onMouseLeave={handleGalleryImageLeave}
 								>
 									<Image
 										src={img}
@@ -337,20 +375,50 @@ export default function ProductPage() {
 
 			{/* Expanded Image Modal */}
 			{expandedImage !== null && (
-				<div className={styles.expandedModal} onClick={handleImageCollapse}>
+				<div
+					className={styles.expandedModal}
+					onClick={handleImageCollapse}
+					onWheel={handleWheel}
+				>
 					<button className={styles.expandedClose} onClick={handleImageCollapse}>
 						✕
 					</button>
-					<div className={styles.expandedImageWrapper}>
-						<Image
-							src={images[expandedImage]}
-							alt={`${product.name} ${expandedImage + 1}`}
-							fill
-							sizes="100vw"
-							quality={100}
-							style={{ objectFit: "contain" }}
-							priority
-						/>
+					<div
+						className={styles.expandedImageWrapper}
+						onClick={(e) => e.stopPropagation()}
+						onMouseDown={onMouseDown}
+						onMouseMove={onMouseMove}
+						onMouseUp={onMouseUp}
+						onMouseLeave={onMouseUp}
+						onTouchStart={onTouchStart}
+						onTouchMove={onTouchMove}
+						onTouchEnd={onMouseUp}
+					>
+						<div
+							className={styles.zoomContainer}
+							style={{
+								transform: `translate(${position.x}px, ${position.y}px) scale(${zoom})`,
+								cursor: zoom > 1 ? (isDragging ? 'grabbing' : 'grab') : 'default'
+							}}
+						>
+							<Image
+								src={images[expandedImage]}
+								alt={`${product.name} ${expandedImage + 1}`}
+								fill
+								sizes="100vw"
+								quality={100}
+								style={{ objectFit: "contain" }}
+								priority
+								draggable={false}
+							/>
+						</div>
+
+						{/* Zoom Controls */}
+						<div className={styles.zoomControls}>
+							<button onClick={() => handleZoom(0.5)} aria-label="Zoom In">+</button>
+							<button onClick={() => handleZoom(-0.5)} aria-label="Zoom Out">−</button>
+							<button onClick={resetZoom} aria-label="Reset Zoom">↺</button>
+						</div>
 					</div>
 				</div>
 			)}
@@ -363,240 +431,238 @@ export default function ProductPage() {
 					</button>
 
 					<div className={styles.productGrid}>
-					{/* Image Gallery */}
-					<div className={styles.imageSection}>
-						<div className={styles.mainImage}>
-							<Image
-								src={images[currentImage]}
-								alt={product.name}
-								fill
-								sizes="(max-width: 768px) 100vw, 50vw"
-								priority={currentImage === 0}
-								quality={85}
-								style={{ objectFit: "cover" }}
-							/>
-							{product.status !== "normal" && (
-								<span className={`${styles.statusBadge} ${styles[product.status]}`}>
-									{product.status.replace("_", " ").toUpperCase()}
-								</span>
+						{/* Image Gallery */}
+						<div className={styles.imageSection}>
+							<div className={styles.mainImage}>
+								<Image
+									src={images[currentImage]}
+									alt={product.name}
+									fill
+									sizes="(max-width: 768px) 100vw, 50vw"
+									priority={currentImage === 0}
+									quality={85}
+									style={{ objectFit: "cover" }}
+								/>
+								{product.status !== "normal" && (
+									<span className={`${styles.statusBadge} ${styles[product.status]}`}>
+										{product.status.replace("_", " ").toUpperCase()}
+									</span>
+								)}
+							</div>
+							{images.length > 1 && (
+								<div className={styles.thumbnails}>
+									{images.slice(0, 2).map((img, index) => (
+										<button
+											key={index}
+											className={`${styles.thumbnail} ${currentImage === index ? styles.activeThumbnail : ""
+												}`}
+											onClick={() => handleImageChange(index)}
+											aria-label={`View image ${index + 1}`}
+										>
+											<Image
+												src={img}
+												alt={`${product.name} ${index + 1}`}
+												fill
+												sizes="100px"
+												quality={60}
+												style={{ objectFit: "cover" }}
+											/>
+										</button>
+									))}
+									{images.length > 2 && (
+										<button
+											className={`${styles.thumbnail} ${styles.showAllThumbnail}`}
+											onClick={handleGalleryOpen}
+											aria-label="View all images"
+										>
+											<Image
+												src={images[2]}
+												alt={`${product.name} 3`}
+												fill
+												sizes="100px"
+												quality={60}
+												style={{ objectFit: "cover" }}
+											/>
+											<div className={styles.showAllOverlay}>
+												<span className={styles.showAllText}>+{images.length - 2}</span>
+												<span className={styles.showAllLabel}>View All</span>
+											</div>
+										</button>
+									)}
+								</div>
 							)}
 						</div>
-						{images.length > 1 && (
-							<div className={styles.thumbnails}>
-								{images.slice(0, 2).map((img, index) => (
-									<button
-										key={index}
-										className={`${styles.thumbnail} ${
-											currentImage === index ? styles.activeThumbnail : ""
-										}`}
-										onClick={() => handleImageChange(index)}
-										aria-label={`View image ${index + 1}`}
-									>
-										<Image
-											src={img}
-											alt={`${product.name} ${index + 1}`}
-											fill
-											sizes="100px"
-											quality={60}
-											style={{ objectFit: "cover" }}
-										/>
-									</button>
-								))}
-								{images.length > 2 && (
-									<button
-										className={`${styles.thumbnail} ${styles.showAllThumbnail}`}
-										onClick={handleGalleryOpen}
-										aria-label="View all images"
-									>
-										<Image
-											src={images[2]}
-											alt={`${product.name} 3`}
-											fill
-											sizes="100px"
-											quality={60}
-											style={{ objectFit: "cover" }}
-										/>
-										<div className={styles.showAllOverlay}>
-											<span className={styles.showAllText}>+{images.length - 2}</span>
-											<span className={styles.showAllLabel}>View All</span>
-										</div>
-									</button>
-								)}
+
+						{/* Product Details */}
+						<div className={styles.detailsSection}>
+							<div className={styles.breadcrumb}>
+								{product.type} / {product.category}
 							</div>
-						)}
-					</div>
 
-					{/* Product Details */}
-					<div className={styles.detailsSection}>
-						<div className={styles.breadcrumb}>
-							{product.type} / {product.category}
-						</div>
+							<h1 className={styles.productName}>{product.name}</h1>
 
-						<h1 className={styles.productName}>{product.name}</h1>
+							{product.brand && (
+								<p className={styles.brand}>by {product.brand}</p>
+							)}
 
-						{product.brand && (
-							<p className={styles.brand}>by {product.brand}</p>
-						)}
-
-						<div className={styles.priceSection}>
-							<div className={styles.priceRow}>
-								<span className={styles.currentPrice}>
-									₹{product.discount_price || product.price}
-								</span>
-								{product.discount_price && (
-									<>
-										<span className={styles.originalPrice}>₹{product.price}</span>
-										<span className={styles.discountBadge}>{discount}% OFF</span>
-									</>
-								)}
-							</div>
-							<p className={styles.taxInfo}>Inclusive of all taxes</p>
-						</div>
-
-						{/* Description */}
-						{product.description && (
-							<div className={styles.description}>
-								<h3>Description</h3>
-								<p>{product.description}</p>
-							</div>
-						)}
-
-						{/* Size Selection */}
-						{product.sizes && product.sizes.length > 0 && (
-							<div className={styles.optionGroup}>
-								<h3>Select Size</h3>
-								<div className={styles.sizeOptions}>
-									{product.sizes.map((size) => (
-										<button
-											key={size}
-											className={`${styles.sizeBtn} ${
-												selectedSize === size ? styles.selected : ""
-											}`}
-											onClick={() => setSelectedSize(size)}
-										>
-											{size}
-										</button>
-									))}
+							<div className={styles.priceSection}>
+								<div className={styles.priceRow}>
+									<span className={styles.currentPrice}>
+										₹{product.discount_price || product.price}
+									</span>
+									{product.discount_price && (
+										<>
+											<span className={styles.originalPrice}>₹{product.price}</span>
+											<span className={styles.discountBadge}>{discount}% OFF</span>
+										</>
+									)}
 								</div>
+								<p className={styles.taxInfo}>Inclusive of all taxes</p>
 							</div>
-						)}
 
-						{/* Color Selection */}
-						{product.colors && product.colors.length > 0 && (
-							<div className={styles.optionGroup}>
-								<h3>Select Color</h3>
-								<div className={styles.colorOptions}>
-									{product.colors.map((color) => (
-										<button
-											key={color}
-											className={`${styles.colorBtn} ${
-												selectedColor === color ? styles.selected : ""
-											}`}
-											onClick={() => setSelectedColor(color)}
-											style={{ background: color }}
-										>
-											{selectedColor === color && <span>✓</span>}
-										</button>
-									))}
+							{/* Description */}
+							{product.description && (
+								<div className={styles.description}>
+									<h3>Description</h3>
+									<p>{product.description}</p>
 								</div>
-							</div>
-						)}
+							)}
 
-						{/* Quantity */}
-						<div className={styles.optionGroup}>
-							<h3>Quantity</h3>
-							<div className={styles.quantitySelector}>
-								<button
-									onClick={() => handleQuantityChange(-1)}
-									className={styles.qtyBtn}
-									aria-label="Decrease quantity"
-									disabled={quantity <= 1}
-								>
-									−
-								</button>
-								<span className={styles.quantity}>{quantity}</span>
-								<button
-									onClick={() => handleQuantityChange(1)}
-									className={styles.qtyBtn}
-									aria-label="Increase quantity"
-									disabled={quantity >= availableToAdd}
-								>
-									+
-								</button>
-							</div>
-							<p className={styles.stockInfo}>
-								{product.stock > 0 ? (
-									<>
-										<span className={styles.inStock}>
-											{product.stock} items in stock
-										</span>
-										{quantityInCart > 0 && (
-											<span className={styles.cartInfo}>
-												{" "}• {quantityInCart} already in cart
+							{/* Size Selection */}
+							{product.sizes && product.sizes.length > 0 && (
+								<div className={styles.optionGroup}>
+									<h3>Select Size</h3>
+									<div className={styles.sizeOptions}>
+										{product.sizes.map((size) => (
+											<button
+												key={size}
+												className={`${styles.sizeBtn} ${selectedSize === size ? styles.selected : ""
+													}`}
+												onClick={() => setSelectedSize(size)}
+											>
+												{size}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Color Selection */}
+							{product.colors && product.colors.length > 0 && (
+								<div className={styles.optionGroup}>
+									<h3>Select Color</h3>
+									<div className={styles.colorOptions}>
+										{product.colors.map((color) => (
+											<button
+												key={color}
+												className={`${styles.colorBtn} ${selectedColor === color ? styles.selected : ""
+													}`}
+												onClick={() => setSelectedColor(color)}
+												style={{ background: color }}
+											>
+												{selectedColor === color && <span>✓</span>}
+											</button>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Quantity */}
+							<div className={styles.optionGroup}>
+								<h3>Quantity</h3>
+								<div className={styles.quantitySelector}>
+									<button
+										onClick={() => handleQuantityChange(-1)}
+										className={styles.qtyBtn}
+										aria-label="Decrease quantity"
+										disabled={quantity <= 1}
+									>
+										−
+									</button>
+									<span className={styles.quantity}>{quantity}</span>
+									<button
+										onClick={() => handleQuantityChange(1)}
+										className={styles.qtyBtn}
+										aria-label="Increase quantity"
+										disabled={quantity >= availableToAdd}
+									>
+										+
+									</button>
+								</div>
+								<p className={styles.stockInfo}>
+									{product.stock > 0 ? (
+										<>
+											<span className={styles.inStock}>
+												{product.stock} items in stock
 											</span>
-										)}
-									</>
+											{quantityInCart > 0 && (
+												<span className={styles.cartInfo}>
+													{" "}• {quantityInCart} already in cart
+												</span>
+											)}
+										</>
+									) : (
+										<span className={styles.outOfStock}>Out of stock</span>
+									)}
+								</p>
+							</div>
+
+							{/* Action Buttons */}
+							<div className={styles.actions}>
+								{isInCart ? (
+									<button
+										className={styles.viewCartBtn}
+										onClick={handleViewCart}
+									>
+										View Cart ({totalInCart})
+									</button>
 								) : (
-									<span className={styles.outOfStock}>Out of stock</span>
+									<button
+										className={styles.addToCartBtn}
+										disabled={product.stock === 0 || addingToCart}
+										onClick={handleAddToCart}
+									>
+										{addingToCart ? "Adding..." : "Add to Cart"}
+									</button>
 								)}
-							</p>
-						</div>
-
-						{/* Action Buttons */}
-						<div className={styles.actions}>
-							{isInCart ? (
 								<button
-									className={styles.viewCartBtn}
-									onClick={handleViewCart}
+									className={styles.buyNowBtn}
+									disabled={product.stock === 0}
+									onClick={handleBuyNow}
 								>
-									View Cart ({totalInCart})
+									Buy Now
 								</button>
-							) : (
-								<button
-									className={styles.addToCartBtn}
-									disabled={product.stock === 0 || addingToCart}
-									onClick={handleAddToCart}
-								>
-									{addingToCart ? "Adding..." : "Add to Cart"}
-								</button>
-							)}
-							<button
-								className={styles.buyNowBtn}
-								disabled={product.stock === 0}
-								onClick={handleBuyNow}
-							>
-								Buy Now
-							</button>
-						</div>
+							</div>
 
-						{/* Additional Info */}
-						<div className={styles.infoCards}>
-							<div className={styles.infoCard}>
-								<span className={styles.infoIcon}>🚚</span>
-								<div>
-									<h4>Free Delivery</h4>
-									<p>On orders above ₹999</p>
+							{/* Additional Info */}
+							<div className={styles.infoCards}>
+								<div className={styles.infoCard}>
+									<span className={styles.infoIcon}>🚚</span>
+									<div>
+										<h4>Free Delivery</h4>
+										<p>On orders above ₹999</p>
+									</div>
 								</div>
-							</div>
-							<div className={styles.infoCard}>
-								<span className={styles.infoIcon}>↩️</span>
-								<div>
-									<h4>Easy Returns</h4>
-									<p>7 days return policy</p>
+								<div className={styles.infoCard}>
+									<span className={styles.infoIcon}>↩️</span>
+									<div>
+										<h4>Easy Returns</h4>
+										<p>7 days return policy</p>
+									</div>
 								</div>
-							</div>
-							<div className={styles.infoCard}>
-								<span className={styles.infoIcon}>✓</span>
-								<div>
-									<h4>Authentic Product</h4>
-									<p>100% original</p>
+								<div className={styles.infoCard}>
+									<span className={styles.infoIcon}>✓</span>
+									<div>
+										<h4>Authentic Product</h4>
+										<p>100% original</p>
+									</div>
 								</div>
 							</div>
 						</div>
-					</div>
 					</div>
 				</div>
 			</div>
+			<Footer />
 		</>
 	);
 }

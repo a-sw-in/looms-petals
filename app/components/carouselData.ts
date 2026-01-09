@@ -12,7 +12,7 @@ export const carouselData: CarouselItem[] = [
   // Demo YouTube Shorts/Video (uses YouTube IFrame embed)
   {
     id: 0,
-    image: '/Images/Home.png', // official YouTube API demo id
+    image: '/Images/Home.png', // Luxury Jewellery Test Image
     title: 'Diamonds are all you…',
     description: 'Exquisite Vines Diamond Necklace Set',
   },

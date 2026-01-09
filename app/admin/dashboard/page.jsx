@@ -38,12 +38,22 @@ export default function AdminDashboard() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
   const [paymentsSort, setPaymentsSort] = useState('newest');
+  const [faqs, setFaqs] = useState([]);
+  const [faqsLoading, setFaqsLoading] = useState(false);
+  const [showFaqModal, setShowFaqModal] = useState(false);
+  const [editingFaq, setEditingFaq] = useState(null);
+  const [faqFormData, setFaqFormData] = useState({
+    question: '',
+    answer: '',
+    category: 'General'
+  });
 
   useEffect(() => {
     checkAuth();
     fetchProducts();
     fetchOrders();
     fetchUsers();
+    fetchFaqs();
   }, []);
 
   const checkAuth = async () => {
@@ -120,6 +130,77 @@ export default function AdminDashboard() {
     } catch (error) {
       console.error('Failed to fetch orders:', error);
     }
+  };
+
+  const fetchFaqs = async () => {
+    try {
+      setFaqsLoading(true);
+      const response = await fetch('/api/admin/faqs');
+      const result = await response.json();
+      if (result.data) {
+        setFaqs(result.data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch FAQs:', error);
+    } finally {
+      setFaqsLoading(false);
+    }
+  };
+
+  const handleSaveFaq = async (e) => {
+    e.preventDefault();
+    const url = '/api/admin/faqs';
+    const method = editingFaq ? 'PUT' : 'POST';
+    const body = editingFaq ? { ...faqFormData, id: editingFaq.id } : faqFormData;
+
+    try {
+      const response = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+
+      if (response.ok) {
+        setShowFaqModal(false);
+        setEditingFaq(null);
+        setFaqFormData({ question: '', answer: '', category: 'General' });
+        fetchFaqs();
+      } else {
+        const error = await response.json();
+        alert(error.message || 'Failed to save FAQ');
+      }
+    } catch (error) {
+      console.error('Error saving FAQ:', error);
+      alert('Error saving FAQ');
+    }
+  };
+
+  const handleDeleteFaq = async (id) => {
+    if (!confirm('Are you sure you want to delete this FAQ?')) return;
+
+    try {
+      const response = await fetch(`/api/admin/faqs?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchFaqs();
+      } else {
+        alert('Failed to delete FAQ');
+      }
+    } catch (error) {
+      console.error('Error deleting FAQ:', error);
+    }
+  };
+
+  const handleEditFaq = (faq) => {
+    setEditingFaq(faq);
+    setFaqFormData({
+      question: faq.question,
+      answer: faq.answer,
+      category: faq.category || 'General'
+    });
+    setShowFaqModal(true);
   };
 
   const handleLogout = async () => {
@@ -420,6 +501,12 @@ export default function AdminDashboard() {
             className={`${styles.tabBtn} ${activeTab === 'users' ? styles.tabActive : ''}`}
           >
             Users ({users.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('faqs')}
+            className={`${styles.tabBtn} ${activeTab === 'faqs' ? styles.tabActive : ''}`}
+          >
+            FAQ ({faqs.length})
           </button>
           <button
             onClick={() => setActiveTab('payments')}
@@ -851,7 +938,66 @@ export default function AdminDashboard() {
           </>
         )}
 
-        {/* Payments Tab */}
+        {/* FAQ Tab */}
+        {activeTab === 'faqs' && (
+          <>
+            <div className={styles.toolbar}>
+              <h2 className={styles.pageTitle}>FAQ Management</h2>
+              <button
+                onClick={() => {
+                  setEditingFaq(null);
+                  setFaqFormData({ question: '', answer: '', category: 'General' });
+                  setShowFaqModal(true);
+                }}
+                className={styles.addBtn}
+              >
+                + Add FAQ
+              </button>
+            </div>
+
+            <div className={styles.tableContainer}>
+              <table className={styles.baseTable}>
+                <thead>
+                  <tr>
+                    <th>Category</th>
+                    <th>Question</th>
+                    <th style={{ width: '150px' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {faqsLoading ? (
+                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading FAQs...</td></tr>
+                  ) : faqs.length === 0 ? (
+                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No FAQs found.</td></tr>
+                  ) : (
+                    faqs.map((faq) => (
+                      <tr key={faq.id}>
+                        <td style={{ fontWeight: '500', color: '#666' }}>{faq.category}</td>
+                        <td style={{ fontWeight: '500' }}>{faq.question}</td>
+                        <td>
+                          <div style={{ display: 'flex', gap: '8px' }}>
+                            <button
+                              onClick={() => handleEditFaq(faq)}
+                              style={{ padding: '6px 12px', background: '#e3f2fd', color: '#1976d2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFaq(faq.id)}
+                              style={{ padding: '6px 12px', background: '#ffebee', color: '#d32f2f', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
         {activeTab === 'payments' && (
           <>
             <div className={styles.toolbar}>
@@ -1158,6 +1304,71 @@ export default function AdminDashboard() {
               </div>
 
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* FAQ Modal */}
+      {showFaqModal && (
+        <div className={styles.modalOverlay} onClick={() => setShowFaqModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            <div className={styles.modalHeader}>
+              <h2>{editingFaq ? 'Edit FAQ' : 'Add New FAQ'}</h2>
+              <button onClick={() => setShowFaqModal(false)} className={styles.closeBtn}>&times;</button>
+            </div>
+
+            <form onSubmit={handleSaveFaq} style={{ padding: '20px' }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                <div className={styles.formGroup}>
+                  <label>Category</label>
+                  <select
+                    value={faqFormData.category}
+                    onChange={(e) => setFaqFormData({ ...faqFormData, category: e.target.value })}
+                    required
+                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  >
+                    <option value="General">General</option>
+                    <option value="Orders">Orders</option>
+                    <option value="Payments">Payments</option>
+                    <option value="Shipping">Shipping</option>
+                    <option value="Account">Account</option>
+                  </select>
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Question</label>
+                  <input
+                    type="text"
+                    value={faqFormData.question}
+                    onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                    required
+                    placeholder="Enter question"
+                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+                  />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label>Answer</label>
+                  <textarea
+                    value={faqFormData.answer}
+                    onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                    required
+                    placeholder="Enter answer"
+                    rows="5"
+                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
+                  />
+                </div>
+
+                <div className={styles.formActions}>
+                  <button type="button" onClick={() => setShowFaqModal(false)} className={styles.cancelBtn}>
+                    Cancel
+                  </button>
+                  <button type="submit" className={styles.saveBtn}>
+                    {editingFaq ? 'Update' : 'Save'} FAQ
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

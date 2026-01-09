@@ -1,8 +1,11 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
 .container {
   width: 100%;
-  padding: 80px 60px;
+  padding: 100px 60px;
   background: white;
-  border-top: 1px solid #e5e7eb;
+  border-top: 1px solid rgba(122, 45, 45, 0.05);
+  font-family: 'Outfit', sans-serif;
 }
 
 .content {
@@ -12,296 +15,214 @@
 
 .header {
   text-align: center;
-  margin-bottom: 60px;
+  margin-bottom: 80px;
 }
 
 .iconWrapper {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 80px;
-  height: 80px;
+  width: 100px;
+  height: 100px;
   background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
   border-radius: 50%;
-  margin-bottom: 24px;
-  box-shadow: 0 8px 24px rgba(37, 211, 102, 0.3);
+  margin-bottom: 32px;
+  box-shadow: 0 15px 35px rgba(37, 211, 102, 0.3);
   animation: pulse 2s ease-in-out infinite;
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     transform: scale(1);
-    box-shadow: 0 8px 24px rgba(37, 211, 102, 0.3);
+    box-shadow: 0 15px 35px rgba(37, 211, 102, 0.3);
   }
+
   50% {
-    transform: scale(1.05);
-    box-shadow: 0 12px 32px rgba(37, 211, 102, 0.5);
+    transform: scale(1.1);
+    box-shadow: 0 25px 45px rgba(37, 211, 102, 0.5);
   }
 }
 
 .whatsappIcon {
-  width: 48px;
-  height: 48px;
+  width: 54px;
+  height: 54px;
   color: white;
 }
 
 .title {
-  font-size: clamp(32px, 5vw, 48px);
-  font-weight: 900;
-  color: #2d2d2d;
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 800;
+  color: #2d1a1a;
   margin: 0 0 16px 0;
   letter-spacing: -0.02em;
 }
 
 .subtitle {
-  font-size: clamp(16px, 2vw, 20px);
-  color: #666;
+  font-size: clamp(1.1rem, 2vw, 1.4rem);
+  color: #8a6b6b;
   margin: 0;
-  font-weight: 400;
+  font-weight: 500;
 }
 
 .messageBox {
-  max-width: 800px;
-  margin: 0 auto 48px;
+  max-width: 850px;
+  margin: 0 auto 60px;
   background: white;
-  border-radius: 24px;
-  padding: 32px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  border-radius: 40px;
+  padding: 48px;
+  box-shadow: 0 30px 60px rgba(122, 45, 45, 0.08);
+  border: 1px solid rgba(122, 45, 45, 0.05);
 }
 
 .messageInput {
   width: 100%;
-  padding: 20px;
-  font-size: 16px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-  border: 2px solid #e0e0e0;
-  border-radius: 16px;
+  padding: 24px;
+  font-size: 1.1rem;
+  font-family: 'Outfit', sans-serif;
+  border: 1px solid rgba(122, 45, 45, 0.1);
+  border-radius: 24px;
   resize: vertical;
-  min-height: 140px;
-  margin-bottom: 20px;
+  min-height: 160px;
+  margin-bottom: 24px;
   transition: all 0.3s ease;
-  line-height: 1.6;
+  line-height: 1.8;
+  background: #fdfaf7;
 }
 
 .messageInput:focus {
   outline: none;
   border-color: #25D366;
-  box-shadow: 0 0 0 4px rgba(37, 211, 102, 0.1);
-}
-
-.messageInput::placeholder {
-  color: #999;
+  background: white;
+  box-shadow: 0 0 0 6px rgba(37, 211, 102, 0.1);
 }
 
 .sendButton {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 12px;
-  width: 100%;
-  padding: 18px 32px;
+  gap: 10px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 10px 28px;
   background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
   color: white;
   border: none;
-  border-radius: 16px;
-  font-size: 18px;
-  font-weight: 700;
+  border-radius: 100px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   cursor: pointer;
-  transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 10px 25px rgba(37, 211, 102, 0.25);
 }
 
 .sendButton:hover:not(:disabled) {
-  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 6px 24px rgba(37, 211, 102, 0.4);
-}
-
-.sendButton:active:not(:disabled) {
-  transform: translateY(0);
-}
-
-.sendButton:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.sendIcon {
-  width: 24px;
-  height: 24px;
-  transition: transform 0.3s ease;
-}
-
-.sendButton:hover:not(:disabled) .sendIcon {
-  transform: translateX(4px);
+  transform: translateY(-5px);
+  box-shadow: 0 25px 50px rgba(37, 211, 102, 0.4);
 }
 
 .cardGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-  gap: 32px;
-  margin-bottom: 48px;
+  grid-template-columns: repeat(auto-fit, minmax(315px, 1fr));
+  gap: 36px;
+  margin-bottom: 54px;
 }
 
 .card {
   background: white;
-  border-radius: 24px;
-  padding: 40px 32px;
+  border-radius: 40px;
+  padding: 50px 40px;
   text-align: center;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-  transition: all 0.3s ease;
+  box-shadow: 0 20px 40px rgba(122, 45, 45, 0.05);
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 1px solid rgba(122, 45, 45, 0.05);
 }
 
 .card:hover {
-  transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+  transform: translateY(-12px);
+  box-shadow: 0 40px 80px rgba(122, 45, 45, 0.12);
   border-color: #25D366;
 }
 
 .cardIcon {
-  font-size: 48px;
-  margin-bottom: 20px;
+  font-size: 60px;
+  margin-bottom: 24px;
   display: inline-block;
-  animation: bounce 2s ease-in-out infinite;
-}
-
-@keyframes bounce {
-  0%, 100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-10px);
-  }
-}
-
-.card:hover .cardIcon {
-  animation: none;
-  transform: scale(1.1);
 }
 
 .cardTitle {
-  font-size: clamp(22px, 3vw, 28px);
+  font-size: 1.75rem;
   font-weight: 800;
-  color: #2d2d2d;
-  margin: 0 0 16px 0;
+  color: #2d1a1a;
+  margin-bottom: 16px;
   letter-spacing: -0.01em;
 }
 
 .cardDescription {
-  font-size: 16px;
-  color: #666;
-  line-height: 1.6;
-  margin: 0 0 28px 0;
+  font-size: 1.1rem;
+  color: #8a6b6b;
+  line-height: 1.8;
+  margin-bottom: 32px;
 }
 
 .cardButton {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 14px 32px;
-  background: linear-gradient(135deg, #25D366 0%, #128C7E 100%);
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
+  gap: 12px;
+  padding: 16px 36px;
+  background: #fdfaf7;
+  color: #25D366;
+  border: 1px solid rgba(37, 211, 102, 0.3);
+  border-radius: 100px;
+  font-size: 1rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
   transition: all 0.3s ease;
-  box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
 }
 
-.cardButton:hover {
-  background: linear-gradient(135deg, #128C7E 0%, #075E54 100%);
-  transform: translateX(4px);
-  box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
-}
-
-.cardButton svg {
-  transition: transform 0.3s ease;
-}
-
-.cardButton:hover svg {
-  transform: translateX(4px);
+.card:hover .cardButton {
+  background: #25D366;
+  color: white;
+  transform: scale(1.05);
 }
 
 .infoBox {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 48px;
-  padding: 32px;
-  background: white;
-  border-radius: 20px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
-}
-
-.infoItem {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.infoIcon {
-  font-size: 28px;
-  display: inline-block;
+  gap: 60px;
+  padding: 40px;
+  background: #fdfaf7;
+  border-radius: 32px;
 }
 
 .infoText {
-  font-size: 16px;
-  font-weight: 600;
-  color: #2d2d2d;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #4a1a1a;
 }
 
-/* Responsive Design */
 @media (max-width: 768px) {
   .container {
-    padding: 60px 24px;
+    padding: 80px 24px;
   }
 
-  .header {
-    margin-bottom: 40px;
+  .messageBox {
+    padding: 32px;
+    border-radius: 32px;
   }
 
   .cardGrid {
-    gap: 24px;
     grid-template-columns: 1fr;
-  }
-
-  .card {
-    padding: 32px 24px;
   }
 
   .infoBox {
     flex-direction: column;
-    gap: 24px;
-    padding: 24px;
-  }
-
-  .infoItem {
-    flex-direction: column;
-    text-align: center;
-    gap: 8px;
-  }
-}
-
-@media (max-width: 480px) {
-  .container {
-    padding: 40px 20px;
-  }
-
-  .iconWrapper {
-    width: 64px;
-    height: 64px;
-  }
-
-  .whatsappIcon {
-    width: 36px;
-    height: 36px;
-  }
-
-  .cardGrid {
-    grid-template-columns: 1fr;
+    gap: 32px;
   }
 }

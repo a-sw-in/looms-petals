@@ -14,12 +14,12 @@ function Carousels() {
           <Carousel.Item key={slide.id} interval={4000}>
             <div className={styles['carousel-card']}>
               <div className={styles['carousel-image-container']}>
-                <Image 
-                  src={slide.image as string} 
+                <Image
+                  src={slide.image as string}
                   alt={`Slide ${index + 1}`}
                   fill
                   sizes="100vw"
-                  style={{ 
+                  style={{
                     objectFit: 'cover',
                     objectPosition: 'center'
                   }}
