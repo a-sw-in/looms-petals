@@ -20,6 +20,7 @@ export default function CheckoutPage() {
   const [validating, setValidating] = useState(true);
   const [stockIssues, setStockIssues] = useState<StockValidation[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+  const [showCancelModal, setShowCancelModal] = useState(false);
   const [formData, setFormData] = useState({
     fullName: "",
     email: "",
@@ -173,6 +174,17 @@ export default function CheckoutPage() {
     setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }));
   };
 
+  /* Razorpay integration */
+  const loadRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement("script");
+      script.src = "https://checkout.razorpay.com/v1/checkout.js";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
   const handlePlaceOrder = async () => {
     // Validate form first
     if (!validateForm()) {
@@ -188,22 +200,90 @@ export default function CheckoutPage() {
     setIsPlacingOrder(true);
 
     try {
-      // 1. Re-validate stock client-side first (optional but good UI)
+      // 1. Re-validate stock client-side first
       await validateStock();
-
-      const hasIssues = items.some(item => {
-        // In a real scenario we'd check against the just-fetched state, 
-        // but validateStock updates state and might remove items.
-        // We'll trust the server validation primarily.
-        return false;
-      });
-
       if (items.length === 0) {
         setIsPlacingOrder(false);
         return;
       }
 
-      // 2. Call API
+      const totalAmount = getTotalPrice();
+
+      // --- Online Payment Flow ---
+      if (formData.paymentMethod === 'online') {
+        const res = await loadRazorpay();
+        if (!res) {
+          alert("Razorpay SDK failed to load. Are you online?");
+          setIsPlacingOrder(false);
+          return;
+        }
+
+        // Create Razorpay Order
+        const orderRes = await fetch('/api/payment/razorpay', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ amount: totalAmount, currency: 'INR' }),
+        });
+        const orderData = await orderRes.json();
+
+        if (!orderRes.ok) {
+          throw new Error(orderData.message || 'Failed to initiate payment');
+        }
+
+        const options = {
+          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
+          amount: orderData.amount,
+          currency: orderData.currency,
+          name: "Looms & Petals",
+          description: "Order Payment",
+          order_id: orderData.orderId,
+          handler: async function (response: any) {
+            // Payment Success! Now Create Order in Backend
+            await createOrderInBackend(response);
+          },
+          modal: {
+            ondismiss: function () {
+              setShowCancelModal(true);
+              setTimeout(() => {
+                router.push('/');
+              }, 3000);
+            }
+          },
+          prefill: {
+            name: formData.fullName,
+            email: formData.email,
+            contact: formData.phone,
+          },
+          theme: {
+            color: "#3399cc",
+          },
+        };
+
+        const paymentObject = new (window as any).Razorpay(options);
+        paymentObject.open();
+
+        // Note: setIsPlacingOrder is intentionally left true until callback or user close (which is hard to detect in all cases, but typically modal covers it)
+        // If user closes modal without paying, we might remain in 'loading' state or need a way to detect close.
+        // Razorpay has a 'modal.ondismiss' callback if needed.
+        paymentObject.on('payment.failed', function (response: any) {
+          alert(response.error.description);
+          setIsPlacingOrder(false);
+        });
+
+      } else {
+        // --- COD Flow ---
+        await createOrderInBackend(null);
+      }
+
+    } catch (error: any) {
+      console.error('Order placement error:', error);
+      alert(error.message || 'Failed to place order. Please try again.');
+      setIsPlacingOrder(false);
+    }
+  };
+
+  const createOrderInBackend = async (paymentDetails: any) => {
+    try {
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
@@ -213,6 +293,7 @@ export default function CheckoutPage() {
           formData,
           items,
           total: getTotalPrice(),
+          paymentDetails, // Pass verify info if online
         }),
       });
 
@@ -223,7 +304,7 @@ export default function CheckoutPage() {
       }
 
       if (result.success) {
-        // 3. Success Handling
+        // Success Handling
         // Clear cart
         items.forEach(item => removeFromCart(item.id, item.selectedSize, item.selectedColor));
 
@@ -233,10 +314,9 @@ export default function CheckoutPage() {
       } else {
         alert(result.message || 'Something went wrong');
       }
-
     } catch (error: any) {
-      console.error('Order placement error:', error);
-      alert(error.message || 'Failed to place order. Please try again.');
+      console.error('Backend order creation error:', error);
+      alert(error.message || 'Payment successful but order creation failed. Please contact support.');
     } finally {
       setIsPlacingOrder(false);
     }
@@ -249,6 +329,18 @@ export default function CheckoutPage() {
           <div className={styles.emptyIcon}>⏳</div>
           <h2>Validating stock availability...</h2>
           <p>Please wait while we check product availability</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (showCancelModal) {
+    return (
+      <div className={styles.emptyContainer}>
+        <div className={styles.empty} style={{ borderColor: '#dc3545' }}>
+          <div className={styles.emptyIcon} style={{ fontSize: '4rem' }}>❌</div>
+          <h2 style={{ color: '#dc3545' }}>Payment Cancelled</h2>
+          <p>Redirecting to home page</p>
         </div>
       </div>
     );
@@ -529,7 +621,7 @@ export default function CheckoutPage() {
                       checked={formData.paymentMethod === "online"}
                       onChange={handlePaymentChange}
                     />
-                    <span>Online Payment (Coming Soon)</span>
+                    <span>Online Payment (Razorpay)</span>
                   </label>
                 </div>
               </div>

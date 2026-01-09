@@ -5,7 +5,7 @@ import { sendOrderEmail } from '@/lib/email';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { formData, items, total } = body;
+        const { formData, items, total, paymentDetails } = body;
 
         if (!formData || !items || items.length === 0) {
             return NextResponse.json(
@@ -21,6 +21,33 @@ export async function POST(request: Request) {
                 { status: 500 }
             );
         }
+
+        let paymentStatus = 'pending';
+
+        // Payment Verification for Online Orders
+        if (formData.paymentMethod === 'online') {
+            if (!paymentDetails || !paymentDetails.razorpay_payment_id || !paymentDetails.razorpay_order_id || !paymentDetails.razorpay_signature) {
+                return NextResponse.json(
+                    { success: false, message: 'Payment verification failed: Missing details' },
+                    { status: 400 }
+                );
+            }
+
+            const crypto = require('crypto');
+            const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
+            hmac.update(paymentDetails.razorpay_order_id + "|" + paymentDetails.razorpay_payment_id);
+            const generated_signature = hmac.digest('hex');
+
+            if (generated_signature === paymentDetails.razorpay_signature) {
+                paymentStatus = 'paid';
+            } else {
+                return NextResponse.json(
+                    { success: false, message: 'Payment verification failed: Invalid signature' },
+                    { status: 400 }
+                );
+            }
+        }
+
 
         // 1. Verify Stock for all items
         for (const item of items) {
@@ -90,6 +117,7 @@ export async function POST(request: Request) {
                     items: items, // JSONB structure
                     total_amount: total,
                     payment_method: formData.paymentMethod,
+                    payment_status: paymentStatus,
                 }
             ])
             .select()
