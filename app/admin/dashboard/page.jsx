@@ -8,13 +8,13 @@ export default function AdminDashboard() {
   const router = useRouter();
   const [user, setUser] = useState(null);
   const [products, setProducts] = useState([]);
-  const [reels, setReels] = useState([]);
+  const [orders, setOrders] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'reels'
+  const [activeTab, setActiveTab] = useState('products'); // 'products' or 'orders'
   const [showModal, setShowModal] = useState(false);
-  const [showReelModal, setShowReelModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [selectedImage, setSelectedImage] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
-  const [editingReel, setEditingReel] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -28,17 +28,12 @@ export default function AdminDashboard() {
     type: 'clothing',
     is_featured: false,
   });
-  const [reelFormData, setReelFormData] = useState({
-    video_url: '',
-    title: '',
-    description: '',
-  });
   const [imageInput, setImageInput] = useState('');
 
   useEffect(() => {
     checkAuth();
     fetchProducts();
-    fetchReels();
+    fetchOrders();
   }, []);
 
   const checkAuth = async () => {
@@ -69,15 +64,15 @@ export default function AdminDashboard() {
     }
   };
 
-  const fetchReels = async () => {
+  const fetchOrders = async () => {
     try {
-      const response = await fetch('/api/admin/reels');
+      const response = await fetch('/api/admin/orders');
       const data = await response.json();
       if (data.success) {
-        setReels(data.data);
+        setOrders(data.data);
       }
     } catch (error) {
-      console.error('Failed to fetch reels:', error);
+      console.error('Failed to fetch orders:', error);
     }
   };
 
@@ -174,6 +169,7 @@ export default function AdminDashboard() {
       status: 'normal',
       type: 'clothing',
       is_featured: false,
+      status: 'normal'
     });
     setImageInput('');
   };
@@ -200,68 +196,33 @@ export default function AdminDashboard() {
     });
   };
 
-  // Reel Management Functions
-  const handleReelSubmit = async (e) => {
-    e.preventDefault();
-    const url = editingReel
-      ? `/api/admin/reels?id=${editingReel.id}`
-      : '/api/admin/reels';
-    const method = editingReel ? 'PUT' : 'POST';
-
+  const handleStatusUpdate = async (id, status, type) => {
     try {
-      const response = await fetch(url, {
-        method,
+      // Optimistic update
+      const updatedOrders = orders.map(order => {
+        if (order.id === id) {
+          if (type === 'payment') return { ...order, payment_status: status };
+          if (type === 'order') return { ...order, order_status: status };
+        }
+        return order;
+      });
+      setOrders(updatedOrders);
+
+      const response = await fetch('/api/admin/orders', {
+        method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(reelFormData),
+        body: JSON.stringify({ id, status, type }),
       });
 
-      if (response.ok) {
-        setShowReelModal(false);
-        setEditingReel(null);
-        resetReelForm();
-        fetchReels();
+      if (!response.ok) {
+        // Revert on failure
+        fetchOrders();
+        alert('Failed to update status');
       }
     } catch (error) {
-      console.error('Failed to save reel:', error);
+      console.error('Update failed:', error);
+      fetchOrders();
     }
-  };
-
-  const handleReelEdit = (reel) => {
-    setEditingReel(reel);
-    setReelFormData({
-      video_url: reel.video_url,
-      title: reel.title,
-      description: reel.description || '',
-    });
-    setShowReelModal(true);
-  };
-
-  const handleReelDelete = async (id) => {
-    if (!confirm('Are you sure you want to delete this reel?')) return;
-
-    try {
-      const response = await fetch(`/api/admin/reels?id=${id}`, {
-        method: 'DELETE',
-      });
-
-      if (response.ok) {
-        fetchReels();
-      }
-    } catch (error) {
-      console.error('Failed to delete reel:', error);
-    }
-  };
-
-  const resetReelForm = () => {
-    setReelFormData({
-      video_url: '',
-      title: '',
-      description: '',
-    });
-  };
-
-  const handleReelChange = (e) => {
-    setReelFormData({ ...reelFormData, [e.target.name]: e.target.value });
   };
 
   if (loading) {
@@ -301,10 +262,10 @@ export default function AdminDashboard() {
             Products ({products.length})
           </button>
           <button
-            onClick={() => setActiveTab('reels')}
-            className={`${styles.tabBtn} ${activeTab === 'reels' ? styles.tabActive : ''}`}
+            onClick={() => setActiveTab('orders')}
+            className={`${styles.tabBtn} ${activeTab === 'orders' ? styles.tabActive : ''}`}
           >
-            Instagram Reels ({reels.length})
+            Orders ({orders.length})
           </button>
         </div>
 
@@ -327,207 +288,391 @@ export default function AdminDashboard() {
 
             {/* Products Grid */}
             <div className={styles.grid}>
-          {products.map((product) => {
-            // Parse image_url to get first image
-            let imageUrl = 'https://picsum.photos/400/600';
-            if (product.image_url) {
-              try {
-                const images = JSON.parse(product.image_url);
-                imageUrl = Array.isArray(images) && images.length > 0 ? images[0] : product.image_url;
-              } catch {
-                imageUrl = product.image_url;
-              }
-            }
-            
-            return (
-            <div key={product.id} className={styles.card}>
-              <div className={styles.cardImage}>
-                <img
-                  src={imageUrl}
-                  alt={product.name}
-                />
-                {product.is_featured && (
-                  <span className={styles.featuredBadge}>Featured</span>
-                )}
-              </div>
-              <div className={styles.cardBody}>
-                <h3 className={styles.cardTitle}>{product.name}</h3>
-                <p className={styles.cardCategory}>{product.category}</p>
-                <div className={styles.cardMeta}>
-                  <span className={styles.metaItem}>
-                    <strong>Type:</strong> {product.type || 'clothing'}
-                  </span>
-                  <span className={`${styles.statusBadge} ${styles[product.status || 'normal']}`}>
-                    {(product.status || 'normal').replace('_', ' ').toUpperCase()}
-                  </span>
-                </div>
-                <div className={styles.cardPrice}>
-                  <span className={styles.price}>₹{product.price}</span>
-                  {product.discount_price && (
-                    <span className={styles.discountPrice}>
-                      ₹{product.discount_price}
-                    </span>
-                  )}
-                </div>
-                <p className={styles.cardStock}>Stock: {product.stock}</p>
-                <div className={styles.cardActions}>
-                  <button
-                    onClick={() => handleEdit(product)}
-                    className={styles.editBtn}
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(product.id)}
-                    className={styles.deleteBtn}
-                  >
-                    Delete
-                  </button>
-                </div>
-              </div>
-            </div>
-            );
-          })}
-        </div>
+              {products.map((product) => {
+                // Parse image_url to get first image
+                let imageUrl = 'https://picsum.photos/400/600';
+                if (product.image_url) {
+                  try {
+                    const images = JSON.parse(product.image_url);
+                    imageUrl = Array.isArray(images) && images.length > 0 ? images[0] : product.image_url;
+                  } catch {
+                    imageUrl = product.image_url;
+                  }
+                }
 
-        {products.length === 0 && (
-          <div className={styles.emptyState}>
-            <p>No products found. Add your first product!</p>
-          </div>
-        )}
-          </>
-        )}
-
-        {/* Reels Tab */}
-        {activeTab === 'reels' && (
-          <>
-            <div className={styles.toolbar}>
-              <h2 className={styles.pageTitle}>Instagram Reels Management</h2>
-              <button
-                onClick={() => {
-                  resetReelForm();
-                  setEditingReel(null);
-                  setShowReelModal(true);
-                }}
-                className={styles.addBtn}
-              >
-                + Add Reel
-              </button>
-            </div>
-
-            {/* Reels Grid */}
-            <div className={styles.grid}>
-              {reels.map((reel) => (
-                <div key={reel.id} className={styles.card}>
-                  <div className={styles.cardImage}>
-                    <video
-                      src={reel.video_url}
-                      style={{ width: '100%', height: '400px', objectFit: 'cover' }}
-                      controls
-                      muted
-                    />
-                  </div>
-                  <div className={styles.cardBody}>
-                    <h3 className={styles.cardTitle}>{reel.title}</h3>
-                    <p className={styles.cardCategory}>{reel.description}</p>
-                    <div className={styles.cardMeta}>
-                      <span className={styles.metaItem} style={{ fontSize: '12px', wordBreak: 'break-all' }}>
-                        {reel.video_url}
-                      </span>
+                return (
+                  <div key={product.id} className={styles.card}>
+                    <div className={styles.cardImage}>
+                      <img
+                        src={imageUrl}
+                        alt={product.name}
+                      />
+                      {product.is_featured && (
+                        <span className={styles.featuredBadge}>Featured</span>
+                      )}
                     </div>
-                    <div className={styles.cardActions}>
-                      <button
-                        onClick={() => handleReelEdit(reel)}
-                        className={styles.editBtn}
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleReelDelete(reel.id)}
-                        className={styles.deleteBtn}
-                      >
-                        Delete
-                      </button>
+                    <div className={styles.cardBody}>
+                      <h3 className={styles.cardTitle}>{product.name}</h3>
+                      <p className={styles.cardCategory}>{product.category}</p>
+                      <div className={styles.cardMeta}>
+                        <span className={styles.metaItem}>
+                          <strong>Type:</strong> {product.type || 'clothing'}
+                        </span>
+                        <span className={`${styles.statusBadge} ${styles[product.status || 'normal']}`}>
+                          {(product.status || 'normal').replace('_', ' ').toUpperCase()}
+                        </span>
+                      </div>
+                      <div className={styles.cardPrice}>
+                        <span className={styles.price}>₹{product.price}</span>
+                        {product.discount_price && (
+                          <span className={styles.discountPrice}>
+                            ₹{product.discount_price}
+                          </span>
+                        )}
+                      </div>
+                      <p className={styles.cardStock}>Stock: {product.stock}</p>
+                      <div className={styles.cardActions}>
+                        <button
+                          onClick={() => handleEdit(product)}
+                          className={styles.editBtn}
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(product.id)}
+                          className={styles.deleteBtn}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
 
-            {reels.length === 0 && (
+            {products.length === 0 && (
               <div className={styles.emptyState}>
-                <p>No reels found. Add your first Instagram reel!</p>
+                <p>No products found. Add your first product!</p>
               </div>
             )}
           </>
         )}
+
+        {/* Orders Tab */}
+        {activeTab === 'orders' && (
+          <>
+            <div className={styles.toolbar}>
+              <h2 className={styles.pageTitle}>Order Management</h2>
+            </div>
+
+            <div style={{ background: 'white', borderRadius: '8px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '900px' }}>
+                <thead>
+                  <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>ID</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Date</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Customer</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Total</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Payment</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Status</th>
+                    <th style={{ padding: '12px', textAlign: 'left' }}>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map((order) => (
+                    <tr
+                      key={order.id}
+                      style={{ borderBottom: '1px solid #eee', cursor: 'pointer', transition: 'background 0.2s' }}
+                      onClick={() => setSelectedOrder(order)}
+                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                    >
+                      <td style={{ padding: '12px' }}>#{order.id}</td>
+                      <td style={{ padding: '12px' }}>{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td style={{ padding: '12px' }}>
+                        <div style={{ fontWeight: '500' }}>{order.customer_name}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>{order.customer_phone}</div>
+                      </td>
+                      <td style={{ padding: '12px', fontWeight: 'bold' }}>₹{Number(order.total_amount).toLocaleString()}</td>
+
+                      {/* Payment Status with Toggle */}
+                      <td style={{ padding: '12px' }}>
+                        <button
+                          onClick={() => handleStatusUpdate(order.id, order.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
+                          style={{
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontWeight: '600',
+                            fontSize: '12px',
+                            backgroundColor: order.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
+                            color: order.payment_status === 'paid' ? '#155724' : '#856404'
+                          }}
+                        >
+                          {order.payment_status === 'paid' ? 'PAID' : 'PENDING'}
+                        </button>
+                      </td>
+
+                      {/* Order Status Badge */}
+                      <td style={{ padding: '12px' }}>
+                        <span style={{
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '12px',
+                          fontWeight: '600',
+                          textTransform: 'uppercase',
+                          backgroundColor: order.order_status === 'delivered' ? '#d4edda' :
+                            order.order_status === 'shipped' ? '#cce5ff' :
+                              order.order_status === 'cancelled' ? '#f8d7da' : '#e2e3e5',
+                          color: order.order_status === 'delivered' ? '#155724' :
+                            order.order_status === 'shipped' ? '#004085' :
+                              order.order_status === 'cancelled' ? '#721c24' : '#383d41'
+                        }}>
+                          {order.order_status || 'Processing'}
+                        </span>
+                      </td>
+
+                      {/* Actions */}
+                      <td style={{ padding: '12px' }}>
+                        {order.order_status !== 'shipped' && order.order_status !== 'delivered' && order.order_status !== 'cancelled' && (
+                          <button
+                            onClick={() => handleStatusUpdate(order.id, 'shipped', 'order')}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#007bff',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              marginRight: '8px',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Pass Order
+                          </button>
+                        )}
+
+                        {order.order_status === 'shipped' && (
+                          <button
+                            onClick={() => handleStatusUpdate(order.id, 'delivered', 'order')}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#28a745',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              marginRight: '8px',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Mark Delivered
+                          </button>
+                        )}
+
+                        {order.order_status !== 'cancelled' && order.order_status !== 'delivered' && (
+                          <button
+                            onClick={() => {
+                              if (confirm('Cancel this order?')) handleStatusUpdate(order.id, 'cancelled', 'order');
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              {orders.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                  <p>No orders found yet.</p>
+                </div>
+              )}
+            </div>
+          </>
+        )}
       </main>
 
-      {/* Reel Modal */}
-      {showReelModal && (
-        <div className={styles.modal}>
-          <div className={styles.modalContent}>
+
+
+      {/* Order Details Modal */}
+      {selectedOrder && (
+        <div className={styles.modalOverlay} onClick={() => setSelectedOrder(null)}>
+          <div className={styles.modalAnimated} onClick={(e) => e.stopPropagation()}>
             <div className={styles.modalHeader}>
-              <h2>{editingReel ? 'Edit' : 'Add'} Instagram Reel</h2>
+              <h2>Order #{selectedOrder.id}</h2>
               <button
-                onClick={() => setShowReelModal(false)}
+                onClick={() => setSelectedOrder(null)}
                 className={styles.closeBtn}
               >
                 ×
               </button>
             </div>
-            <form onSubmit={handleReelSubmit} className={styles.form}>
-              <div className={styles.formGroup}>
-                <label>Video URL (Google Drive Link) *</label>
-                <input
-                  type="url"
-                  name="video_url"
-                  value={reelFormData.video_url}
-                  onChange={handleReelChange}
-                  required
-                  placeholder="https://drive.google.com/..."
-                />
-                <small style={{ color: '#666', fontSize: '12px', marginTop: '4px' }}>
-                  Paste the Google Drive video link (must be publicly accessible)
-                </small>
+
+            <div className={styles.form}>
+              {/* Order Status Bar */}
+              <div style={{
+                display: 'flex',
+                gap: '12px',
+                marginBottom: '24px',
+                padding: '16px',
+                background: '#f8f9fa',
+                borderRadius: '8px',
+                alignItems: 'center',
+                justifyContent: 'space-between'
+              }}>
+                <div>
+                  <span style={{ fontSize: '14px', color: '#666' }}>Status: </span>
+                  <span style={{
+                    padding: '4px 8px',
+                    borderRadius: '12px',
+                    fontSize: '12px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    backgroundColor: selectedOrder.order_status === 'delivered' ? '#d4edda' :
+                      selectedOrder.order_status === 'shipped' ? '#cce5ff' :
+                        selectedOrder.order_status === 'cancelled' ? '#f8d7da' : '#fff3cd',
+                    color: selectedOrder.order_status === 'delivered' ? '#155724' :
+                      selectedOrder.order_status === 'shipped' ? '#004085' :
+                        selectedOrder.order_status === 'cancelled' ? '#721c24' : '#856404'
+                  }}>
+                    {selectedOrder.order_status || 'Processing'}
+                  </span>
+                </div>
+
+                <div>
+                  <span style={{ fontSize: '14px', color: '#666' }}>Payment: </span>
+                  <button
+                    onClick={() => handleStatusUpdate(selectedOrder.id, selectedOrder.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
+                    style={{
+                      padding: '4px 12px',
+                      borderRadius: '12px',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      backgroundColor: selectedOrder.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
+                      color: selectedOrder.payment_status === 'paid' ? '#155724' : '#856404'
+                    }}
+                  >
+                    {selectedOrder.payment_status === 'paid' ? 'PAID' : 'PENDING'}
+                  </button>
+                </div>
               </div>
 
-              <div className={styles.formGroup}>
-                <label>Title *</label>
-                <input
-                  type="text"
-                  name="title"
-                  value={reelFormData.title}
-                  onChange={handleReelChange}
-                  required
-                  placeholder="Enter reel title"
-                />
+              <div className={styles.formRow}>
+                {/* Customer Details */}
+                <div className={styles.formGroup}>
+                  <h3>Customer Details</h3>
+                  <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
+                  <p><strong>Email:</strong> {selectedOrder.customer_email}</p>
+                  <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
+                </div>
+
+                {/* Shipping Address */}
+                <div className={styles.formGroup}>
+                  <h3>Shipping Address</h3>
+                  <p>{selectedOrder.shipping_address}</p>
+                  <p>{selectedOrder.city}, {selectedOrder.state} - {selectedOrder.pincode}</p>
+                  <p>{selectedOrder.country}</p>
+                </div>
               </div>
 
-              <div className={styles.formGroup}>
-                <label>Description</label>
-                <textarea
-                  name="description"
-                  value={reelFormData.description}
-                  onChange={handleReelChange}
-                  rows="3"
-                  placeholder="Enter reel description (optional)"
-                />
+              {/* Products List */}
+              <h3>Ordered Products</h3>
+              <div style={{ marginBottom: '24px', border: '1px solid #eee', borderRadius: '8px', overflow: 'hidden' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead style={{ background: '#f8f9fa' }}>
+                    <tr>
+                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px' }}>ID</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>Image</th>
+                      <th style={{ padding: '12px', textAlign: 'left', fontSize: '14px' }}>Product</th>
+                      <th style={{ padding: '12px', textAlign: 'center', fontSize: '14px' }}>Qty</th>
+                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px' }}>Price</th>
+                      <th style={{ padding: '12px', textAlign: 'right', fontSize: '14px' }}>Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Array.isArray(selectedOrder.items) && selectedOrder.items.map((item, idx) => (
+                      <tr key={idx} style={{ borderBottom: '1px solid #eee' }}>
+                        <td style={{ padding: '12px', fontSize: '13px', color: '#666' }}>#{item.id || item.product_id || 'N/A'}</td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>
+                          <img
+                            src={item.image || item.image_url || 'https://via.placeholder.com/50'}
+                            alt={item.name}
+                            style={{ width: '40px', height: '40px', objectFit: 'cover', borderRadius: '4px', cursor: 'pointer', border: '1px solid #ddd' }}
+                            onClick={() => setSelectedImage(item.image || item.image_url)}
+                          />
+                        </td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: '600', fontSize: '14px' }}>{item.name}</div>
+                          {item.selectedSize && <div style={{ fontSize: '12px', color: '#666' }}>Size: {item.selectedSize}</div>}
+                          {item.selectedColor && <div style={{ fontSize: '12px', color: '#666' }}>Color: <span style={{ display: 'inline-block', width: '10px', height: '10px', background: item.selectedColor, borderRadius: '50%', verticalAlign: 'middle', marginLeft: '4px' }}></span></div>}
+                        </td>
+                        <td style={{ padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{item.price || item.discount_price}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{(item.price || item.discount_price) * item.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot style={{ background: '#f8f9fa' }}>
+                    <tr>
+                      <td colSpan="5" style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold' }}>Total Amount:</td>
+                      <td style={{ padding: '12px', textAlign: 'right', fontWeight: 'bold', fontSize: '16px' }}>₹{Number(selectedOrder.total_amount).toLocaleString()}</td>
+                    </tr>
+                  </tfoot>
+                </table>
               </div>
 
+              {/* Actions */}
               <div className={styles.formActions}>
-                <button
-                  type="button"
-                  onClick={() => setShowReelModal(false)}
-                  className={styles.cancelBtn}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className={styles.saveBtn}>
-                  {editingReel ? 'Update' : 'Create'} Reel
-                </button>
+                {selectedOrder.order_status !== 'shipped' && selectedOrder.order_status !== 'delivered' && selectedOrder.order_status !== 'cancelled' && (
+                  <button
+                    onClick={() => handleStatusUpdate(selectedOrder.id, 'shipped', 'order')}
+                    className={styles.saveBtn}
+                    style={{ background: '#007bff' }}
+                  >
+                    Pass Order (Ship)
+                  </button>
+                )}
+
+                {selectedOrder.order_status === 'shipped' && (
+                  <button
+                    onClick={() => handleStatusUpdate(selectedOrder.id, 'delivered', 'order')}
+                    className={styles.saveBtn}
+                    style={{ background: '#28a745' }}
+                  >
+                    Mark as Delivered
+                  </button>
+                )}
+
+                {selectedOrder.order_status !== 'cancelled' && selectedOrder.order_status !== 'delivered' && (
+                  <button
+                    onClick={() => {
+                      if (confirm('Cancel this order?')) handleStatusUpdate(selectedOrder.id, 'cancelled', 'order');
+                    }}
+                    className={styles.cancelBtn}
+                    style={{ background: '#dc3545', color: 'white' }}
+                  >
+                    Cancel Order
+                  </button>
+                )}
               </div>
-            </form>
+
+            </div>
           </div>
         </div>
       )}
@@ -692,9 +837,9 @@ export default function AdminDashboard() {
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     {formData.image_url.map((url, index) => (
                       <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
-                        <img 
-                          src={url} 
-                          alt={`Preview ${index + 1}`} 
+                        <img
+                          src={url}
+                          alt={`Preview ${index + 1}`}
                           style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
                           onError={(e) => e.target.style.display = 'none'}
                         />
@@ -757,6 +902,21 @@ export default function AdminDashboard() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Image Zoom Modal */}
+      {selectedImage && (
+        <div className={styles.imageModalOverlay} onClick={() => setSelectedImage(null)}>
+          <div className={styles.imageModal} onClick={(e) => e.stopPropagation()}>
+            <button
+              className={styles.imageModalClose}
+              onClick={() => setSelectedImage(null)}
+            >
+              ×
+            </button>
+            <img src={selectedImage} alt="Zoomed Product" />
           </div>
         </div>
       )}

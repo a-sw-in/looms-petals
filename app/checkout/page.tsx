@@ -186,21 +186,60 @@ export default function CheckoutPage() {
     }
 
     setIsPlacingOrder(true);
-    
-    // Re-validate stock before placing order
-    await validateStock();
-    
-    // Check if there are any stock issues after validation
-    const hasIssues = items.some(item => {
-      // Fetch would have already adjusted/removed problematic items
-      return false; // This will be updated by the validation
-    });
-    
-    // TODO: Implement actual order placement logic
-    console.log("Order data:", { formData, items, total: getTotalPrice() });
-    alert("Order placed successfully! (Demo mode)");
-    
-    setIsPlacingOrder(false);
+
+    try {
+      // 1. Re-validate stock client-side first (optional but good UI)
+      await validateStock();
+
+      const hasIssues = items.some(item => {
+        // In a real scenario we'd check against the just-fetched state, 
+        // but validateStock updates state and might remove items.
+        // We'll trust the server validation primarily.
+        return false;
+      });
+
+      if (items.length === 0) {
+        setIsPlacingOrder(false);
+        return;
+      }
+
+      // 2. Call API
+      const response = await fetch('/api/orders', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          formData,
+          items,
+          total: getTotalPrice(),
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to place order');
+      }
+
+      if (result.success) {
+        // 3. Success Handling
+        // Clear cart
+        items.forEach(item => removeFromCart(item.id, item.selectedSize, item.selectedColor));
+
+        // Redirect or show success
+        alert(`Order placed successfully! Order ID: ${result.orderId}`);
+        router.push('/'); // Redirect to home or order success page
+      } else {
+        alert(result.message || 'Something went wrong');
+      }
+
+    } catch (error: any) {
+      console.error('Order placement error:', error);
+      alert(error.message || 'Failed to place order. Please try again.');
+    } finally {
+      setIsPlacingOrder(false);
+    }
   };
 
   if (validating) {
@@ -294,7 +333,7 @@ export default function CheckoutPage() {
                       )}
                       {item.selectedColor && (
                         <span className={styles.variant}>
-                          Color: <span style={{ 
+                          Color: <span style={{
                             display: 'inline-block',
                             width: '10px',
                             height: '10px',
@@ -338,14 +377,14 @@ export default function CheckoutPage() {
             <form className={styles.form} onSubmit={(e) => e.preventDefault()}>
               <div className={styles.formGroup}>
                 <label>Full Name *</label>
-                <input 
-                  type="text" 
+                <input
+                  type="text"
                   name="fullName"
                   placeholder="Enter your full name"
                   value={formData.fullName}
                   onChange={handleInputChange}
                   className={formErrors.fullName ? styles.errorInput : ""}
-                  required 
+                  required
                 />
                 {formErrors.fullName && (
                   <span className={styles.errorText}>{formErrors.fullName}</span>
@@ -354,14 +393,14 @@ export default function CheckoutPage() {
 
               <div className={styles.formGroup}>
                 <label>Email Address *</label>
-                <input 
-                  type="email" 
+                <input
+                  type="email"
                   name="email"
                   placeholder="your@email.com"
                   value={formData.email}
                   onChange={handleInputChange}
                   className={formErrors.email ? styles.errorInput : ""}
-                  required 
+                  required
                 />
                 {formErrors.email && (
                   <span className={styles.errorText}>{formErrors.email}</span>
@@ -370,14 +409,14 @@ export default function CheckoutPage() {
 
               <div className={styles.formGroup}>
                 <label>Phone Number *</label>
-                <input 
-                  type="tel" 
+                <input
+                  type="tel"
                   name="phone"
                   placeholder="+91 XXXXX XXXXX"
                   value={formData.phone}
                   onChange={handleInputChange}
                   className={formErrors.phone ? styles.errorInput : ""}
-                  required 
+                  required
                 />
                 {formErrors.phone && (
                   <span className={styles.errorText}>{formErrors.phone}</span>
@@ -386,14 +425,14 @@ export default function CheckoutPage() {
 
               <div className={styles.formGroup}>
                 <label>Address *</label>
-                <textarea 
+                <textarea
                   name="address"
                   placeholder="Street address"
                   rows={3}
                   value={formData.address}
                   onChange={handleInputChange}
                   className={formErrors.address ? styles.errorInput : ""}
-                  required 
+                  required
                 />
                 {formErrors.address && (
                   <span className={styles.errorText}>{formErrors.address}</span>
@@ -403,14 +442,14 @@ export default function CheckoutPage() {
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>City *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="city"
                     placeholder="City"
                     value={formData.city}
                     onChange={handleInputChange}
                     className={formErrors.city ? styles.errorInput : ""}
-                    required 
+                    required
                   />
                   {formErrors.city && (
                     <span className={styles.errorText}>{formErrors.city}</span>
@@ -419,14 +458,14 @@ export default function CheckoutPage() {
 
                 <div className={styles.formGroup}>
                   <label>State *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="state"
                     placeholder="State"
                     value={formData.state}
                     onChange={handleInputChange}
                     className={formErrors.state ? styles.errorInput : ""}
-                    required 
+                    required
                   />
                   {formErrors.state && (
                     <span className={styles.errorText}>{formErrors.state}</span>
@@ -437,15 +476,15 @@ export default function CheckoutPage() {
               <div className={styles.formRow}>
                 <div className={styles.formGroup}>
                   <label>PIN Code *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="pinCode"
                     placeholder="000000"
                     value={formData.pinCode}
                     onChange={handleInputChange}
                     className={formErrors.pinCode ? styles.errorInput : ""}
                     maxLength={6}
-                    required 
+                    required
                   />
                   {formErrors.pinCode && (
                     <span className={styles.errorText}>{formErrors.pinCode}</span>
@@ -454,14 +493,14 @@ export default function CheckoutPage() {
 
                 <div className={styles.formGroup}>
                   <label>Country *</label>
-                  <input 
-                    type="text" 
+                  <input
+                    type="text"
                     name="country"
                     placeholder="India"
                     value={formData.country}
                     onChange={handleInputChange}
                     className={formErrors.country ? styles.errorInput : ""}
-                    required 
+                    required
                   />
                   {formErrors.country && (
                     <span className={styles.errorText}>{formErrors.country}</span>
@@ -473,9 +512,9 @@ export default function CheckoutPage() {
                 <h3>Payment Method</h3>
                 <div className={styles.paymentOptions}>
                   <label className={styles.paymentOption}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
+                    <input
+                      type="radio"
+                      name="payment"
                       value="cod"
                       checked={formData.paymentMethod === "cod"}
                       onChange={handlePaymentChange}
@@ -483,9 +522,9 @@ export default function CheckoutPage() {
                     <span>Cash on Delivery</span>
                   </label>
                   <label className={styles.paymentOption}>
-                    <input 
-                      type="radio" 
-                      name="payment" 
+                    <input
+                      type="radio"
+                      name="payment"
                       value="online"
                       checked={formData.paymentMethod === "online"}
                       onChange={handlePaymentChange}
@@ -495,8 +534,8 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <button 
-                type="button" 
+              <button
+                type="button"
                 className={styles.placeOrderBtn}
                 onClick={handlePlaceOrder}
                 disabled={isPlacingOrder || items.length === 0}

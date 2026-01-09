@@ -43,7 +43,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!isLoading && hasCheckedAuth) {
       const isPublicRoute = PUBLIC_ROUTES.includes(pathname);
       const isOpenRoute = pathname.startsWith('/admin');
-      
+
       if (!user && !isPublicRoute && !isOpenRoute) {
         // Not authenticated, redirect to login (except for open routes)
         router.push('/login');
@@ -89,18 +89,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
+      const data = await response.json().catch(() => null);
 
-      if (response.ok && data.success) {
+      if (response.ok && data && data.success) {
         setUser(data.user);
         router.push('/');
         return { success: true };
       } else {
-        return { success: false, message: data.message || 'Login failed' };
+        const errorMessage = data?.message || `Login failed (Status: ${response.status})`;
+        return { success: false, message: errorMessage };
       }
     } catch (error) {
       console.error('Login error:', error);
-      return { success: false, message: 'Network error. Please try again.' };
+      return { success: false, message: 'Network error or server unavailable. Please check your connection.' };
+    }
+  };
+
+  // Helper to safely parse JSON response
+  const safeJson = async (response: Response) => {
+    try {
+      return await response.json();
+    } catch {
+      return null;
     }
   };
 
