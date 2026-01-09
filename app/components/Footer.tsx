@@ -79,7 +79,7 @@ export default function Footer() {
         <div className={styles.bottom}>
           <div className={styles.bottomContent}>
             <p className={styles.copyright}>
-              © 2025 Looms & Petals. All rights reserved.
+              © 2025 Zaith. All rights reserved.
             </p>
             <div className={styles.bottomLinks}>
               <a href="#" className={styles.bottomLink}>Privacy Policy</a>

@@ -31,7 +31,7 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    const { name, phone } = await request.json();
+    const { name, phone, address, age, gender } = await request.json();
 
     // Update user profile
     const { data: updatedUser, error: updateError } = await supabase
@@ -39,10 +39,13 @@ export async function PUT(request: NextRequest) {
       .update({
         name: name || undefined,
         phone: phone || undefined,
+        address: address || undefined,
+        age: age || undefined,
+        gender: gender || undefined,
         updated_at: new Date().toISOString(),
       })
       .eq("id", session.user_id)
-      .select("id, email, name, phone")
+      .select("id, email, name, phone, address, age, gender")
       .single();
 
     if (updateError || !updatedUser) {

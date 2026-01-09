@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     // Find user by email
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id, email, password, name")
+      .select("id, email, password, name, phone, address, age, gender")
       .eq("email", email.toLowerCase())
       .single();
 
@@ -104,7 +104,10 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         name: user.name,
-        phone: null,
+        phone: user.phone,
+        address: user.address,
+        age: user.age,
+        gender: user.gender,
       },
       message: "Login successful",
     });

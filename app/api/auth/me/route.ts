@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     if (!expiresAtStr.endsWith('Z')) {
       expiresAtStr += 'Z';
     }
-    
+
     if (new Date(expiresAtStr) < new Date()) {
       // Delete expired session
       await supabase
@@ -53,7 +53,7 @@ export async function GET(request: NextRequest) {
     // Get user data
     const { data: user, error: userError } = await supabase
       .from("users")
-      .select("id, email, name")
+      .select("id, email, name, phone, address, age, gender")
       .eq("id", session.user_id)
       .single();
 

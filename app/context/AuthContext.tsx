@@ -8,6 +8,9 @@ type User = {
   email: string;
   name: string | null;
   phone: string | null;
+  address: string | null;
+  age: number | null;
+  gender: string | null;
 };
 
 type AuthContextType = {
@@ -18,6 +21,7 @@ type AuthContextType = {
   register: (email: string, password: string, name: string, otp: string) => Promise<{ success: boolean; message?: string }>;
   logout: () => Promise<void>;
   updateProfile: (data: Partial<User>) => Promise<{ success: boolean; message?: string }>;
+  deleteAccount: () => Promise<{ success: boolean; message?: string }>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -176,6 +180,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const deleteAccount = async () => {
+    try {
+      const response = await fetch('/api/auth/delete-account', {
+        method: 'DELETE',
+        credentials: 'include',
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        setUser(null);
+        localStorage.removeItem('cart');
+        router.push('/');
+        return { success: true };
+      } else {
+        return { success: false, message: result.message || 'Deletion failed' };
+      }
+    } catch (error) {
+      console.error('Delete account error:', error);
+      return { success: false, message: 'Network error. Please try again.' };
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -186,6 +213,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         updateProfile,
+        deleteAccount,
       }}
     >
       {isLoading ? (

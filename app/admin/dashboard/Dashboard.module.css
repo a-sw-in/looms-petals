@@ -352,6 +352,9 @@
   z-index: 1000;
   padding: 20px;
 }
+.modalContent{
+  background-color:wheat ;
+}
 
 .modal {
   background: white;

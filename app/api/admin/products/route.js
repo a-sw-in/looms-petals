@@ -54,7 +54,7 @@ export async function GET(request) {
 
     if (id) {
       const { data, error } = await query.eq('id', id).single();
-      
+
       if (error) {
         return NextResponse.json(
           { success: false, message: 'Product not found' },
@@ -138,6 +138,7 @@ export async function POST(request) {
           type: body.type || 'clothing',
           is_featured: body.is_featured || false,
           is_active: body.is_active !== false,
+          searchkey: body.searchkey || null,
         },
       ])
       .select()
@@ -201,6 +202,7 @@ export async function PUT(request) {
       type: body.type || 'clothing',
       is_featured: body.is_featured || false,
       is_active: body.is_active !== false,
+      searchkey: body.searchkey || null,
     };
 
     const { data, error } = await supabaseAdmin

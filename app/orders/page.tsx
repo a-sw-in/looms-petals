@@ -64,6 +64,28 @@ export default function MyOrders() {
             <Navbar />
 
             <main style={{ flex: 1, maxWidth: '1000px', margin: '0 auto', padding: '40px 24px', width: '100%' }}>
+                <button
+                    onClick={() => router.back()}
+                    style={{
+                        background: 'none',
+                        border: 'none',
+                        color: '#7a2d2d',
+                        fontSize: '16px',
+                        fontWeight: '600',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        marginBottom: '24px',
+                        padding: '0'
+                    }}
+                >
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 12H5M12 19l-7-7 7-7" />
+                    </svg>
+                    Back
+                </button>
+
                 <h1 style={{
                     fontSize: '32px',
                     fontWeight: '700',

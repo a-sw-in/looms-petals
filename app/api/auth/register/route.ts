@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
     if (!createdAtStr.endsWith('Z') && !createdAtStr.includes('+')) {
       createdAtStr += 'Z';
     }
-    
+
     const otpVerifiedAtMs = new Date(createdAtStr).getTime();
     const nowMs = Date.now();
     const timeDiff = (nowMs - otpVerifiedAtMs) / (1000 * 60); // minutes
@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         role: 'user',
         is_verified: true,
       })
-      .select("id, email, name")
+      .select("id, email, name, phone, address, age, gender")
       .single();
 
     if (createError || !newUser) {
