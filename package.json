@@ -18,15 +18,11 @@
     "bootstrap": "^5.3.8",
     "dotenv": "^17.2.3",
     "mongoose": "^8.19.3",
-<<<<<<< HEAD
-    "next": "16.0.1",
+    "next": "^16.1.1",
     "razorpay": "^2.9.6",
-=======
-    "next": "16.0.7",
->>>>>>> 6323dda2de668c6b671a880eeed756bb411dcf15
-    "react": "19.2.0",
+    "react": "^19.2.3",
     "react-bootstrap": "^2.10.10",
-    "react-dom": "19.2.0",
+    "react-dom": "^19.2.3",
     "resend": "^6.4.2"
   },
   "devDependencies": {
@@ -37,7 +33,7 @@
     "@types/react-dom": "^19",
     "css-loader": "^7.1.2",
     "eslint": "^9",
-    "eslint-config-next": "16.0.1",
+    "eslint-config-next": "^16.1.1",
     "style-loader": "^4.0.0",
     "tailwindcss": "^4",
     "typescript": "^5"
