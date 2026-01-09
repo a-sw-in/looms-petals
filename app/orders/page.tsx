@@ -229,7 +229,7 @@ export default function MyOrders() {
 
                         <div style={{ padding: '24px' }}>
                             {/* Cancelled Refund Message */}
-                            {selectedOrder.order_status === 'cancelled' && (
+                            {(selectedOrder.order_status?.toLowerCase() === 'cancelled' || selectedOrder.order_status === 'Cancelled') && (
                                 <div style={{
                                     padding: '16px',
                                     background: '#fff3cd',
@@ -252,6 +252,12 @@ export default function MyOrders() {
                                     ) : (
                                         <div style={{ marginTop: '8px' }}>
                                             No refund is required as the payment was not completed/captured online.
+                                        </div>
+                                    )}
+
+                                    {(selectedOrder.cancel_reason || selectedOrder.reason) && (
+                                        <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid rgba(133, 100, 4, 0.2)' }}>
+                                            <strong>Reason:</strong> {selectedOrder.cancel_reason || selectedOrder.reason}
                                         </div>
                                     )}
                                 </div>

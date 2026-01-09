@@ -5,7 +5,7 @@ import { sendOrderEmail } from '@/lib/email';
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { formData, items, total, paymentDetails } = body;
+        const { formData, items, total, paymentDetails, userId } = body;
 
         if (!formData || !items || items.length === 0) {
             return NextResponse.json(
@@ -49,56 +49,26 @@ export async function POST(request: Request) {
         }
 
 
-        // 1. Verify Stock for all items
-        for (const item of items) {
-            const { data: product, error } = await supabase
-                .from('products')
-                .select('stock, name')
-                .eq('id', item.id)
-                .single();
+        // 1 & 2. Atomic Stock Validation and Deduction
+        // We use the custom PostgreSQL function 'deduct_order_stock' to handle this
+        // in a single database transaction to prevent race conditions (overselling).
+        const { data: stockResult, error: rpcError } = await supabaseAdmin.rpc('deduct_order_stock', {
+            items_json: items
+        });
 
-            if (error || !product) {
-                return NextResponse.json(
-                    { success: false, message: `Product not found: ${item.name}` },
-                    { status: 404 }
-                );
-            }
-
-            if (product.stock < item.quantity) {
-                return NextResponse.json(
-                    {
-                        success: false,
-                        message: `Insufficient stock for ${product.name}. Available: ${product.stock}`
-                    },
-                    { status: 400 }
-                );
-            }
+        if (rpcError) {
+            console.error('RPC Error (deduct_order_stock):', rpcError);
+            return NextResponse.json(
+                { success: false, message: 'Stock verification failed due to a server error.' },
+                { status: 500 }
+            );
         }
 
-        // 2. Deduct Stock
-        // Manual update loop (safest fallback without guaranteed RPC existence)
-        for (const item of items) {
-            const { data: currentProduct, error: fetchError } = await supabaseAdmin
-                .from('products')
-                .select('stock')
-                .eq('id', item.id)
-                .single();
-
-            if (fetchError || !currentProduct) {
-                console.error(`Error fetching stock for ${item.name}`, fetchError);
-                continue;
-            }
-
-            const newStock = Math.max(0, currentProduct.stock - item.quantity);
-
-            const { error: updateError } = await supabaseAdmin
-                .from('products')
-                .update({ stock: newStock })
-                .eq('id', item.id);
-
-            if (updateError) {
-                console.error(`Failed to update stock for ${item.name}`, updateError);
-            }
+        if (!stockResult.success) {
+            return NextResponse.json(
+                { success: false, message: stockResult.message },
+                { status: 400 }
+            );
         }
 
         // 3. Create Order
@@ -106,6 +76,7 @@ export async function POST(request: Request) {
             .from('orders')
             .insert([
                 {
+                    user_id: userId || null,
                     customer_name: formData.fullName,
                     customer_email: formData.email,
                     customer_phone: formData.phone,

@@ -72,7 +72,7 @@ export async function PUT(request: Request) {
         }
 
         const body = await request.json();
-        const { id, status, type } = body; // type is 'payment' or 'order'
+        const { id, status, type, reason } = body; // type is 'payment' or 'order', reason is cancel_reason
 
         if (!id || !status || !type) {
             return NextResponse.json({ success: false, message: 'Missing required fields' }, { status: 400 });
@@ -83,6 +83,9 @@ export async function PUT(request: Request) {
             updateData.payment_status = status;
         } else if (type === 'order') {
             updateData.order_status = status;
+            if (reason) {
+                updateData.cancel_reason = reason;
+            }
         }
 
         const { error } = await supabaseAdmin

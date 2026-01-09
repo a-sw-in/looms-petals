@@ -1,6 +1,7 @@
 "use client";
 
 import { useCart } from "../context/CartContext";
+import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { useState, useEffect } from "react";
@@ -16,6 +17,7 @@ type StockValidation = {
 
 export default function CheckoutPage() {
   const { items, getTotalPrice, updateQuantity, removeFromCart } = useCart();
+  const { user } = useAuth();
   const router = useRouter();
   const [validating, setValidating] = useState(true);
   const [stockIssues, setStockIssues] = useState<StockValidation[]>([]);
@@ -294,6 +296,7 @@ export default function CheckoutPage() {
           items,
           total: getTotalPrice(),
           paymentDetails, // Pass verify info if online
+          userId: user?.id,
         }),
       });
 

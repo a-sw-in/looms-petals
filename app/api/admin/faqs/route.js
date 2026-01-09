@@ -1,5 +1,5 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
+import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
 const supabaseAdmin = createClient(
@@ -8,19 +8,51 @@ const supabaseAdmin = createClient(
 );
 
 async function verifyAdmin() {
-    const cookieStore = cookies();
-    const token = cookieStore.get('admin_token')?.value;
+    try {
+        console.log('[FAQ Auth] Starting admin verification...');
+        const cookieStore = await cookies();
+        const token = cookieStore.get('admin_token')?.value;
 
-    if (!token) return false;
+        console.log('[FAQ Auth] Token found:', !!token);
+        if (!token) {
+            console.log('[FAQ Auth] No admin_token cookie found');
+            return null;
+        }
 
-    const { data: session, error } = await supabaseAdmin
-        .from('admin_sessions')
-        .select('*')
-        .eq('token', token)
-        .gt('expires_at', new Date().toISOString())
-        .single();
+        console.log('[FAQ Auth] Checking session in database...');
+        const { data: session, error: sessionError } = await supabaseAdmin
+            .from('admin_sessions')
+            .select('*')
+            .eq('token', token)
+            .gt('expires_at', new Date().toISOString())
+            .single();
 
-    return !!session;
+        console.log('[FAQ Auth] Session query result:', { session: !!session, error: sessionError?.message });
+        if (sessionError || !session) {
+            console.log('[FAQ Auth] Session validation failed');
+            return null;
+        }
+
+        console.log('[FAQ Auth] Fetching user with ID:', session.user_id);
+        const { data: user, error: userError } = await supabaseAdmin
+            .from('users')
+            .select('*')
+            .eq('id', session.user_id)
+            .eq('role', 'admin')
+            .single();
+
+        console.log('[FAQ Auth] User query result:', { user: !!user, role: user?.role, error: userError?.message });
+        if (userError || !user) {
+            console.log('[FAQ Auth] User validation failed');
+            return null;
+        }
+
+        console.log('[FAQ Auth] Admin verified successfully');
+        return user;
+    } catch (error) {
+        console.error('[FAQ Auth] Exception during verification:', error.message);
+        return null;
+    }
 }
 
 export async function GET() {

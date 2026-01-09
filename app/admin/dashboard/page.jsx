@@ -14,6 +14,9 @@ export default function AdminDashboard() {
   const [showModal, setShowModal] = useState(false);
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [selectedImage, setSelectedImage] = useState(null);
+  const [showCancelModal, setShowCancelModal] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelingOrderId, setCancelingOrderId] = useState(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
@@ -325,13 +328,13 @@ export default function AdminDashboard() {
     });
   };
 
-  const handleStatusUpdate = async (id, status, type) => {
+  const handleStatusUpdate = async (id, status, type, reason = null) => {
     try {
       // Optimistic update
       const updatedOrders = orders.map(order => {
         if (order.id === id) {
           if (type === 'payment') return { ...order, payment_status: status };
-          if (type === 'order') return { ...order, order_status: status };
+          if (type === 'order') return { ...order, order_status: status, cancel_reason: reason };
         }
         return order;
       });
@@ -340,7 +343,7 @@ export default function AdminDashboard() {
       const response = await fetch('/api/admin/orders', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, status, type }),
+        body: JSON.stringify({ id, status, type, reason }),
       });
 
       if (!response.ok) {
@@ -802,24 +805,24 @@ export default function AdminDashboard() {
                           </button>
                         )}
 
-                        {order.order_status !== 'cancelled' && order.order_status !== 'delivered' && (
-                          <button
-                            onClick={() => {
-                              if (confirm('Cancel this order?')) handleStatusUpdate(order.id, 'cancelled', 'order');
-                            }}
-                            style={{
-                              padding: '6px 12px',
-                              background: '#dc3545',
-                              color: 'white',
-                              border: 'none',
-                              borderRadius: '4px',
-                              cursor: 'pointer',
-                              fontSize: '13px'
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        )}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setCancelingOrderId(order.id);
+                            setShowCancelModal(true);
+                          }}
+                          style={{
+                            padding: '6px 12px',
+                            background: '#dc3545',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontSize: '13px'
+                          }}
+                        >
+                          Cancel
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -833,393 +836,424 @@ export default function AdminDashboard() {
               )}
             </div>
           </>
-        )}
+        )
+        }
 
         {/* Users Tab */}
-        {activeTab === 'users' && (
-          <>
-            <div className={styles.toolbar}>
-              <h2 className={styles.pageTitle}>User Management</h2>
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ position: 'relative' }}>
-                  <input
-                    type="text"
-                    placeholder="Search by name or ID..."
-                    value={userSearchQuery}
-                    onChange={(e) => setUserSearchQuery(e.target.value)}
-                    style={{
-                      padding: '8px 12px',
-                      paddingLeft: '32px',
-                      borderRadius: '4px',
-                      border: '1px solid #ddd',
-                      width: '250px',
-                      fontSize: '14px'
-                    }}
-                  />
-                  <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }}>🔍</span>
+        {
+          activeTab === 'users' && (
+            <>
+              <div className={styles.toolbar}>
+                <h2 className={styles.pageTitle}>User Management</h2>
+                <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
+                  <div style={{ position: 'relative' }}>
+                    <input
+                      type="text"
+                      placeholder="Search by name or ID..."
+                      value={userSearchQuery}
+                      onChange={(e) => setUserSearchQuery(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        paddingLeft: '32px',
+                        borderRadius: '4px',
+                        border: '1px solid #ddd',
+                        width: '250px',
+                        fontSize: '14px'
+                      }}
+                    />
+                    <span style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#888' }}>🔍</span>
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div style={{ background: 'white', borderRadius: '8px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
-                <thead>
-                  <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
-                    <th
-                      style={{ padding: '12px', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => requestSort('id')}
-                    >
-                      ID {sortConfig.key === 'id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th
-                      style={{ padding: '12px', textAlign: 'left', cursor: 'pointer' }}
-                      onClick={() => requestSort('name')}
-                    >
-                      Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                    </th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Role</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Joined</th>
-                    <th style={{ padding: '12px', textAlign: 'left' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {usersLoading ? (
-                    <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Loading users...</td></tr>
-                  ) : getFilteredAndSortedUsers().map((user) => (
-                    <tr
-                      key={user.id}
-                      style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
-                      onClick={() => setSelectedUser(user)}
-                      onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
-                      onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
-                    >
-                      <td style={{ padding: '12px', fontSize: '11px', color: '#666' }}>#{user.id.toString().slice(0, 8)}...</td>
-                      <td style={{ padding: '12px' }}>
-                        <div style={{ fontWeight: '600' }}>{user.name}</div>
-                      </td>
-                      <td style={{ padding: '12px' }}>{user.email}</td>
-                      <td style={{ padding: '12px' }}>
-                        <span style={{
-                          padding: '2px 8px',
-                          borderRadius: '12px',
-                          fontSize: '11px',
-                          fontWeight: 'bold',
-                          textTransform: 'uppercase',
-                          background: user.role === 'admin' ? '#fde0e0' : '#e0e7ff',
-                          color: user.role === 'admin' ? '#c53030' : '#3730a3'
-                        }}>
-                          {user.role}
-                        </span>
-                      </td>
-                      <td style={{ padding: '12px' }}>{new Date(user.created_at).toLocaleDateString()}</td>
-                      <td style={{ padding: '12px' }}>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedUser(user);
-                          }}
-                          style={{ color: '#007bff', background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px' }}
-                        >
-                          View
-                        </button>
-                      </td>
+              <div style={{ background: 'white', borderRadius: '8px', padding: '16px', boxShadow: '0 2px 4px rgba(0,0,0,0.05)', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', minWidth: '800px' }}>
+                  <thead>
+                    <tr style={{ background: '#f8f9fa', borderBottom: '2px solid #eee' }}>
+                      <th
+                        style={{ padding: '12px', textAlign: 'left', cursor: 'pointer' }}
+                        onClick={() => requestSort('id')}
+                      >
+                        ID {sortConfig.key === 'id' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        style={{ padding: '12px', textAlign: 'left', cursor: 'pointer' }}
+                        onClick={() => requestSort('name')}
+                      >
+                        Name {sortConfig.key === 'name' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Email</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Role</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Joined</th>
+                      <th style={{ padding: '12px', textAlign: 'left' }}>Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {!usersLoading && users.length === 0 && (
-                <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
-                  <p>No users found.</p>
-                </div>
-              )}
-            </div>
-          </>
-        )}
-
-        {/* FAQ Tab */}
-        {activeTab === 'faqs' && (
-          <>
-            <div className={styles.toolbar}>
-              <h2 className={styles.pageTitle}>FAQ Management</h2>
-              <button
-                onClick={() => {
-                  setEditingFaq(null);
-                  setFaqFormData({ question: '', answer: '', category: 'General' });
-                  setShowFaqModal(true);
-                }}
-                className={styles.addBtn}
-              >
-                + Add FAQ
-              </button>
-            </div>
-
-            <div className={styles.tableContainer}>
-              <table className={styles.baseTable}>
-                <thead>
-                  <tr>
-                    <th>Category</th>
-                    <th>Question</th>
-                    <th style={{ width: '150px' }}>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {faqsLoading ? (
-                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading FAQs...</td></tr>
-                  ) : faqs.length === 0 ? (
-                    <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No FAQs found.</td></tr>
-                  ) : (
-                    faqs.map((faq) => (
-                      <tr key={faq.id}>
-                        <td style={{ fontWeight: '500', color: '#666' }}>{faq.category}</td>
-                        <td style={{ fontWeight: '500' }}>{faq.question}</td>
-                        <td>
-                          <div style={{ display: 'flex', gap: '8px' }}>
-                            <button
-                              onClick={() => handleEditFaq(faq)}
-                              style={{ padding: '6px 12px', background: '#e3f2fd', color: '#1976d2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                              Edit
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFaq(faq.id)}
-                              style={{ padding: '6px 12px', background: '#ffebee', color: '#d32f2f', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
-                            >
-                              Delete
-                            </button>
-                          </div>
+                  </thead>
+                  <tbody>
+                    {usersLoading ? (
+                      <tr><td colSpan="6" style={{ padding: '20px', textAlign: 'center' }}>Loading users...</td></tr>
+                    ) : getFilteredAndSortedUsers().map((user) => (
+                      <tr
+                        key={user.id}
+                        style={{ borderBottom: '1px solid #eee', cursor: 'pointer' }}
+                        onClick={() => setSelectedUser(user)}
+                        onMouseEnter={(e) => e.currentTarget.style.background = '#f8f9fa'}
+                        onMouseLeave={(e) => e.currentTarget.style.background = 'white'}
+                      >
+                        <td style={{ padding: '12px', fontSize: '11px', color: '#666' }}>#{user.id.toString().slice(0, 8)}...</td>
+                        <td style={{ padding: '12px' }}>
+                          <div style={{ fontWeight: '600' }}>{user.name}</div>
+                        </td>
+                        <td style={{ padding: '12px' }}>{user.email}</td>
+                        <td style={{ padding: '12px' }}>
+                          <span style={{
+                            padding: '2px 8px',
+                            borderRadius: '12px',
+                            fontSize: '11px',
+                            fontWeight: 'bold',
+                            textTransform: 'uppercase',
+                            background: user.role === 'admin' ? '#fde0e0' : '#e0e7ff',
+                            color: user.role === 'admin' ? '#c53030' : '#3730a3'
+                          }}>
+                            {user.role}
+                          </span>
+                        </td>
+                        <td style={{ padding: '12px' }}>{new Date(user.created_at).toLocaleDateString()}</td>
+                        <td style={{ padding: '12px' }}>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedUser(user);
+                            }}
+                            style={{ color: '#007bff', background: 'none', border: 'none', cursor: 'pointer', padding: '0 8px' }}
+                          >
+                            View
+                          </button>
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-        {activeTab === 'payments' && (
-          <>
-            <div className={styles.toolbar}>
-              <h2 className={styles.pageTitle}>Financial Overview</h2>
-              <div style={{ display: 'flex', gap: '12px' }}>
-                <select
-                  className={styles.filterSelect}
-                  value={paymentsSort}
-                  onChange={(e) => setPaymentsSort(e.target.value)}
-                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
-                >
-                  <option value="newest">Newest First</option>
-                  <option value="oldest">Oldest First</option>
-                  <option value="monthly">Monthly View</option>
-                </select>
-              </div>
-            </div>
+                    ))}
+                  </tbody>
+                </table>
 
-            <div className={styles.statsGrid}>
-              <div className={`${styles.statCard}`} style={{ borderLeft: '4px solid #7a2d2d' }}>
-                <h3 className={styles.statTitle}>Total Revenue</h3>
-                <p className={styles.statValue}>₹{orders.reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
-              </div>
-              <div className={styles.statCard} style={{ borderLeft: '4px solid #00c853' }}>
-                <h3 className={styles.statTitle}>Online Payments (Razorpay/UPI)</h3>
-                <p className={styles.statValue} style={{ color: '#00c853' }}>₹{orders.filter(o => o.payment_method === 'online').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
-                <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'online').length} Transactions</div>
-              </div>
-              <div className={styles.statCard} style={{ borderLeft: '4px solid #ffa000' }}>
-                <h3 className={styles.statTitle}>Cash on Delivery (COD)</h3>
-                <p className={styles.statValue} style={{ color: '#ffa000' }}>₹{orders.filter(o => o.payment_method === 'cod').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
-                <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'cod').length} Transactions</div>
-              </div>
-            </div>
-
-            <div className={styles.tableContainer}>
-              <h3 className={styles.tableTitle}>Recent Transactions</h3>
-              <table className={styles.baseTable}>
-                <thead>
-                  <tr>
-                    <th>Date</th>
-                    <th>Order ID</th>
-                    <th>Customer</th>
-                    <th>Method</th>
-                    <th>Amount</th>
-                    <th>Payment Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {getSortedPayments().map((order) => (
-                    <tr
-                      key={order.id}
-                      className={styles.clickableRow}
-                      onClick={() => {
-                        setSelectedOrder(order);
-                        setActiveTab('orders');
-                      }}
-                    >
-                      <td>{new Date(order.created_at).toLocaleDateString()}</td>
-                      <td style={{ fontWeight: '600' }}>#{order.id}</td>
-                      <td>
-                        <div style={{ fontWeight: '500' }}>{order.customer_name}</div>
-                        <div style={{ fontSize: '12px', color: '#666' }}>{order.customer_email}</div>
-                      </td>
-                      <td>
-                        <span className={`${styles.methodBadge} ${order.payment_method === 'online' ? styles.online : styles.cod}`}>
-                          {order.payment_method === 'online' ? 'Razorpay/UPI' : 'COD'}
-                        </span>
-                      </td>
-                      <td style={{ fontWeight: '600' }}>₹{order.total_amount?.toLocaleString()}</td>
-                      <td>
-                        <span className={order.payment_status === 'paid' ? styles.statusBadgePaid : styles.statusBadgePending}>
-                          {order.payment_status || 'Pending'}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </>
-        )}
-      </main>
-
-      {/* User Details Modal */}
-      {selectedUser && (
-        <div className={styles.modalOverlay} onClick={() => setSelectedUser(null)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
-            <div className={styles.modalHeader}>
-              <h2>User Details</h2>
-              <button onClick={() => setSelectedUser(null)} className={styles.closeBtn}>&times;</button>
-            </div>
-
-            <div style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                <div><strong>ID:</strong> {selectedUser.id}</div>
-                <div><strong>Name:</strong> {selectedUser.name}</div>
-                <div><strong>Email:</strong> {selectedUser.email}</div>
-                <div><strong>Phone:</strong> {selectedUser.phone || 'N/A'}</div>
-                <div><strong>Role:</strong> {selectedUser.role}</div>
-                <div><strong>Joined:</strong> {new Date(selectedUser.created_at).toLocaleString()}</div>
-
-                <div style={{ borderTop: '1px solid #eee', marginTop: '10px', paddingTop: '10px' }}>
-                  <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>Additional Info</h3>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
-                    <div><strong>Age:</strong> {selectedUser.age || 'N/A'}</div>
-                    <div><strong>Gender:</strong> {selectedUser.gender || 'N/A'}</div>
-                  </div>
-                  <div style={{ marginTop: '8px' }}><strong>Address:</strong> {selectedUser.address || 'N/A'}</div>
-                </div>
-
-                {selectedUser.role !== 'admin' && (
-                  <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
-                    <button
-                      onClick={() => handleDeleteUser(selectedUser.id)}
-                      style={{
-                        width: '100%',
-                        padding: '10px',
-                        background: '#dc3545',
-                        color: 'white',
-                        border: 'none',
-                        borderRadius: '4px',
-                        cursor: 'pointer',
-                        fontWeight: 'bold'
-                      }}
-                    >
-                      Remove User
-                    </button>
-                    <p style={{ fontSize: '12px', color: '#666', textAlign: 'center', marginTop: '8px' }}>
-                      Warning: This will permanently delete the user's account and data.
-                    </p>
+                {!usersLoading && users.length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px', color: '#666' }}>
+                    <p>No users found.</p>
                   </div>
                 )}
               </div>
-            </div>
-          </div>
-        </div>
-      )}
+            </>
+          )
+        }
 
+        {/* FAQ Tab */}
+        {
+          activeTab === 'faqs' && (
+            <>
+              <div className={styles.toolbar}>
+                <h2 className={styles.pageTitle}>FAQ Management</h2>
+                <button
+                  onClick={() => {
+                    setEditingFaq(null);
+                    setFaqFormData({ question: '', answer: '', category: 'General' });
+                    setShowFaqModal(true);
+                  }}
+                  className={styles.addBtn}
+                >
+                  + Add FAQ
+                </button>
+              </div>
 
-      {/* Order Details Modal */}
-      {selectedOrder && (
-        <div className={styles.modalOverlay} onClick={() => setSelectedOrder(null)}>
-          <div className={styles.modalAnimated} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2>Order #{selectedOrder.id}</h2>
-              <button
-                onClick={() => setSelectedOrder(null)}
-                className={styles.closeBtn}
-              >
-                ×
-              </button>
-            </div>
-
-            <div className={styles.form}>
-              {/* Order Status Bar */}
-              <div style={{
-                display: 'flex',
-                gap: '12px',
-                marginBottom: '24px',
-                padding: '16px',
-                background: '#f8f9fa',
-                borderRadius: '8px',
-                alignItems: 'center',
-                justifyContent: 'space-between'
-              }}>
-                <div>
-                  <span style={{ fontSize: '14px', color: '#666' }}>Status: </span>
-                  <span style={{
-                    padding: '4px 8px',
-                    borderRadius: '12px',
-                    fontSize: '12px',
-                    fontWeight: '600',
-                    textTransform: 'uppercase',
-                    backgroundColor: selectedOrder.order_status === 'delivered' ? '#d4edda' :
-                      selectedOrder.order_status === 'shipped' ? '#cce5ff' :
-                        selectedOrder.order_status === 'cancelled' ? '#f8d7da' : '#fff3cd',
-                    color: selectedOrder.order_status === 'delivered' ? '#155724' :
-                      selectedOrder.order_status === 'shipped' ? '#004085' :
-                        selectedOrder.order_status === 'cancelled' ? '#721c24' : '#856404'
-                  }}>
-                    {selectedOrder.order_status || 'Processing'}
-                  </span>
-                </div>
-
-                <div>
-                  <span style={{ fontSize: '14px', color: '#666' }}>Payment: </span>
-                  <button
-                    onClick={() => handleStatusUpdate(selectedOrder.id, selectedOrder.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
-                    style={{
-                      padding: '4px 12px',
-                      borderRadius: '12px',
-                      border: 'none',
-                      cursor: 'pointer',
-                      fontWeight: '600',
-                      fontSize: '12px',
-                      backgroundColor: selectedOrder.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
-                      color: selectedOrder.payment_status === 'paid' ? '#155724' : '#856404'
-                    }}
+              <div className={styles.tableContainer}>
+                <table className={styles.baseTable}>
+                  <thead>
+                    <tr>
+                      <th>Category</th>
+                      <th>Question</th>
+                      <th style={{ width: '150px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {faqsLoading ? (
+                      <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>Loading FAQs...</td></tr>
+                    ) : faqs.length === 0 ? (
+                      <tr><td colSpan="3" style={{ textAlign: 'center', padding: '20px' }}>No FAQs found.</td></tr>
+                    ) : (
+                      faqs.map((faq) => (
+                        <tr key={faq.id}>
+                          <td style={{ fontWeight: '500', color: '#666' }}>{faq.category}</td>
+                          <td style={{ fontWeight: '500' }}>{faq.question}</td>
+                          <td>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => handleEditFaq(faq)}
+                                style={{ padding: '6px 12px', background: '#e3f2fd', color: '#1976d2', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                Edit
+                              </button>
+                              <button
+                                onClick={() => handleDeleteFaq(faq.id)}
+                                style={{ padding: '6px 12px', background: '#ffebee', color: '#d32f2f', border: 'none', borderRadius: '4px', cursor: 'pointer' }}
+                              >
+                                Delete
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        }
+        {
+          activeTab === 'payments' && (
+            <>
+              <div className={styles.toolbar}>
+                <h2 className={styles.pageTitle}>Financial Overview</h2>
+                <div style={{ display: 'flex', gap: '12px' }}>
+                  <select
+                    className={styles.filterSelect}
+                    value={paymentsSort}
+                    onChange={(e) => setPaymentsSort(e.target.value)}
+                    style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
                   >
-                    {selectedOrder.payment_status === 'paid' ? 'PAID' : 'PENDING'}
-                  </button>
+                    <option value="newest">Newest First</option>
+                    <option value="oldest">Oldest First</option>
+                    <option value="monthly">Monthly View</option>
+                  </select>
                 </div>
               </div>
 
-              <div className={styles.formRow}>
-                {/* Customer Details */}
-                <div className={styles.formGroup}>
-                  <h3>Customer Details</h3>
-                  <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
-                  <p><strong>Email:</strong> {selectedOrder.customer_email}</p>
-                  <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
-                  <p><strong>Payment Method:</strong> <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{selectedOrder.payment_method || 'N/A'}</span></p>
+              <div className={styles.statsGrid}>
+                <div className={`${styles.statCard}`} style={{ borderLeft: '4px solid #7a2d2d' }}>
+                  <h3 className={styles.statTitle}>Total Revenue</h3>
+                  <p className={styles.statValue}>₹{orders.reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #00c853' }}>
+                  <h3 className={styles.statTitle}>Online Payments (Razorpay/UPI)</h3>
+                  <p className={styles.statValue} style={{ color: '#00c853' }}>₹{orders.filter(o => o.payment_method === 'online').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+                  <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'online').length} Transactions</div>
+                </div>
+                <div className={styles.statCard} style={{ borderLeft: '4px solid #ffa000' }}>
+                  <h3 className={styles.statTitle}>Cash on Delivery (COD)</h3>
+                  <p className={styles.statValue} style={{ color: '#ffa000' }}>₹{orders.filter(o => o.payment_method === 'cod').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+                  <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'cod').length} Transactions</div>
+                </div>
+              </div>
+
+              <div className={styles.tableContainer}>
+                <h3 className={styles.tableTitle}>Recent Transactions</h3>
+                <table className={styles.baseTable}>
+                  <thead>
+                    <tr>
+                      <th>Date</th>
+                      <th>Order ID</th>
+                      <th>Customer</th>
+                      <th>Method</th>
+                      <th>Amount</th>
+                      <th>Payment Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {getSortedPayments().map((order) => (
+                      <tr
+                        key={order.id}
+                        className={styles.clickableRow}
+                        onClick={() => {
+                          setSelectedOrder(order);
+                          setActiveTab('orders');
+                        }}
+                      >
+                        <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                        <td style={{ fontWeight: '600' }}>#{order.id}</td>
+                        <td>
+                          <div style={{ fontWeight: '500' }}>{order.customer_name}</div>
+                          <div style={{ fontSize: '12px', color: '#666' }}>{order.customer_email}</div>
+                        </td>
+                        <td>
+                          <span className={`${styles.methodBadge} ${order.payment_method === 'online' ? styles.online : styles.cod}`}>
+                            {order.payment_method === 'online' ? 'Razorpay/UPI' : 'COD'}
+                          </span>
+                        </td>
+                        <td style={{ fontWeight: '600' }}>₹{order.total_amount?.toLocaleString()}</td>
+                        <td>
+                          <span className={order.payment_status === 'paid' ? styles.statusBadgePaid : styles.statusBadgePending}>
+                            {order.payment_status || 'Pending'}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        }
+      </main >
+
+      {/* User Details Modal */}
+      {
+        selectedUser && (
+          <div className={styles.modalOverlay} onClick={() => setSelectedUser(null)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+              <div className={styles.modalHeader}>
+                <h2>User Details</h2>
+                <button onClick={() => setSelectedUser(null)} className={styles.closeBtn}>&times;</button>
+              </div>
+
+              <div style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  <div><strong>ID:</strong> {selectedUser.id}</div>
+                  <div><strong>Name:</strong> {selectedUser.name}</div>
+                  <div><strong>Email:</strong> {selectedUser.email}</div>
+                  <div><strong>Phone:</strong> {selectedUser.phone || 'N/A'}</div>
+                  <div><strong>Role:</strong> {selectedUser.role}</div>
+                  <div><strong>Joined:</strong> {new Date(selectedUser.created_at).toLocaleString()}</div>
+
+                  <div style={{ borderTop: '1px solid #eee', marginTop: '10px', paddingTop: '10px' }}>
+                    <h3 style={{ fontSize: '16px', marginBottom: '8px' }}>Additional Info</h3>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
+                      <div><strong>Age:</strong> {selectedUser.age || 'N/A'}</div>
+                      <div><strong>Gender:</strong> {selectedUser.gender || 'N/A'}</div>
+                    </div>
+                    <div style={{ marginTop: '8px' }}><strong>Address:</strong> {selectedUser.address || 'N/A'}</div>
+                  </div>
+
+                  {selectedUser.role !== 'admin' && (
+                    <div style={{ marginTop: '20px', borderTop: '1px solid #eee', paddingTop: '15px' }}>
+                      <button
+                        onClick={() => handleDeleteUser(selectedUser.id)}
+                        style={{
+                          width: '100%',
+                          padding: '10px',
+                          background: '#dc3545',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontWeight: 'bold'
+                        }}
+                      >
+                        Remove User
+                      </button>
+                      <p style={{ fontSize: '12px', color: '#666', textAlign: 'center', marginTop: '8px' }}>
+                        Warning: This will permanently delete the user's account and data.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      }
+
+
+      {/* Order Details Modal */}
+      {
+        selectedOrder && (
+          <div className={styles.modalOverlay} onClick={() => setSelectedOrder(null)}>
+            <div className={styles.modalAnimated} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h2>Order #{selectedOrder.id}</h2>
+                <button
+                  onClick={() => setSelectedOrder(null)}
+                  className={styles.closeBtn}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div className={styles.form}>
+                {/* Order Status Bar */}
+                <div style={{
+                  display: 'flex',
+                  gap: '12px',
+                  marginBottom: '24px',
+                  padding: '16px',
+                  background: '#f8f9fa',
+                  borderRadius: '8px',
+                  alignItems: 'center',
+                  justifyContent: 'space-between'
+                }}>
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#666' }}>Status: </span>
+                    <span style={{
+                      padding: '4px 8px',
+                      borderRadius: '12px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                      backgroundColor: selectedOrder.order_status === 'delivered' ? '#d4edda' :
+                        selectedOrder.order_status === 'shipped' ? '#cce5ff' :
+                          selectedOrder.order_status === 'cancelled' ? '#f8d7da' : '#fff3cd',
+                      color: selectedOrder.order_status === 'delivered' ? '#155724' :
+                        selectedOrder.order_status === 'shipped' ? '#004085' :
+                          selectedOrder.order_status === 'cancelled' ? '#721c24' : '#856404'
+                    }}>
+                      {selectedOrder.order_status || 'Processing'}
+                    </span>
+                  </div>
+
+                  <div>
+                    <span style={{ fontSize: '14px', color: '#666' }}>Payment: </span>
+                    <button
+                      onClick={() => handleStatusUpdate(selectedOrder.id, selectedOrder.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
+                      style={{
+                        padding: '4px 12px',
+                        borderRadius: '12px',
+                        border: 'none',
+                        cursor: 'pointer',
+                        fontWeight: '600',
+                        fontSize: '12px',
+                        backgroundColor: selectedOrder.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
+                        color: selectedOrder.payment_status === 'paid' ? '#155724' : '#856404'
+                      }}
+                    >
+                      {selectedOrder.payment_status === 'paid' ? 'PAID' : 'PENDING'}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Shipping Address */}
-                <div className={styles.formGroup}>
-                  <h3>Shipping Address</h3>
-                  <p>{selectedOrder.shipping_address}</p>
-                  <p>{selectedOrder.city}, {selectedOrder.state} - {selectedOrder.pincode}</p>
-                  <p>{selectedOrder.country}</p>
+                <div className={styles.formRow}>
+                  {/* Customer Details */}
+                  <div className={styles.formGroup}>
+                    <h3>Customer Details</h3>
+                    {selectedOrder.user_id && (
+                      <p><strong>User ID:</strong> <span style={{ fontFamily: 'monospace', background: '#f0f0f0', padding: '2px 6px', borderRadius: '4px' }}>{selectedOrder.user_id}</span></p>
+                    )}
+                    <p><strong>Name:</strong> {selectedOrder.customer_name}</p>
+                    <p><strong>Email:</strong> {selectedOrder.customer_email}</p>
+                    <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
+                    <p><strong>Payment Method:</strong> <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{selectedOrder.payment_method || 'N/A'}</span></p>
+                  </div>
+
+                  {/* Shipping Address */}
+                  <div className={styles.formGroup}>
+                    <h3>Shipping Address</h3>
+                    <p>{selectedOrder.shipping_address}</p>
+                    <p>{selectedOrder.city}, {selectedOrder.state} - {selectedOrder.pincode}</p>
+                    <p>{selectedOrder.country}</p>
+                  </div>
                 </div>
+
+                {(selectedOrder.order_status?.toLowerCase() === 'cancelled' || selectedOrder.order_status === 'Cancelled') && (
+                  <div style={{
+                    borderLeft: '4px solid #dc3545',
+                    background: '#fff5f5',
+                    padding: '16px',
+                    marginBottom: '24px',
+                    borderRadius: '8px',
+                    display: 'block',
+                    width: '100%'
+                  }}>
+                    <h3 style={{ color: '#dc3545', margin: '0 0 8px 0', fontSize: '14px', textTransform: 'uppercase' }}>Cancellation Reason</h3>
+                    <p style={{ fontStyle: 'italic', color: '#721c24', margin: 0, fontSize: '15px' }}>
+                      "{selectedOrder.cancel_reason || selectedOrder.reason || 'No reason provided'}"
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Products List */}
@@ -1293,7 +1327,8 @@ export default function AdminDashboard() {
                 {selectedOrder.order_status !== 'cancelled' && selectedOrder.order_status !== 'delivered' && (
                   <button
                     onClick={() => {
-                      if (confirm('Cancel this order?')) handleStatusUpdate(selectedOrder.id, 'cancelled', 'order');
+                      setCancelingOrderId(selectedOrder.id);
+                      setShowCancelModal(true);
                     }}
                     className={styles.cancelBtn}
                     style={{ background: '#dc3545', color: 'white' }}
@@ -1305,330 +1340,413 @@ export default function AdminDashboard() {
 
             </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
       {/* FAQ Modal */}
-      {showFaqModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowFaqModal(false)}>
-          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
-            <div className={styles.modalHeader}>
-              <h2>{editingFaq ? 'Edit FAQ' : 'Add New FAQ'}</h2>
-              <button onClick={() => setShowFaqModal(false)} className={styles.closeBtn}>&times;</button>
+      {
+        showFaqModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowFaqModal(false)}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+              <div className={styles.modalHeader}>
+                <h2>{editingFaq ? 'Edit FAQ' : 'Add New FAQ'}</h2>
+                <button onClick={() => setShowFaqModal(false)} className={styles.closeBtn}>&times;</button>
+              </div>
+
+              <form onSubmit={handleSaveFaq} style={{ padding: '20px' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                  <div className={styles.formGroup}>
+                    <label>Category</label>
+                    <select
+                      value={faqFormData.category}
+                      onChange={(e) => setFaqFormData({ ...faqFormData, category: e.target.value })}
+                      required
+                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    >
+                      <option value="General">General</option>
+                      <option value="Orders">Orders</option>
+                      <option value="Payments">Payments</option>
+                      <option value="Shipping">Shipping</option>
+                      <option value="Account">Account</option>
+                    </select>
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Question</label>
+                    <input
+                      type="text"
+                      value={faqFormData.question}
+                      onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
+                      required
+                      placeholder="Enter question"
+                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
+                    />
+                  </div>
+
+                  <div className={styles.formGroup}>
+                    <label>Answer</label>
+                    <textarea
+                      value={faqFormData.answer}
+                      onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
+                      required
+                      placeholder="Enter answer"
+                      rows="5"
+                      style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
+                    />
+                  </div>
+
+                  <div className={styles.formActions}>
+                    <button type="button" onClick={() => setShowFaqModal(false)} className={styles.cancelBtn}>
+                      Cancel
+                    </button>
+                    <button type="submit" className={styles.saveBtn}>
+                      {editingFaq ? 'Update' : 'Save'} FAQ
+                    </button>
+                  </div>
+                </div>
+              </form>
             </div>
+          </div>
+        )
+      }
 
-            <form onSubmit={handleSaveFaq} style={{ padding: '20px' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-                <div className={styles.formGroup}>
-                  <label>Category</label>
-                  <select
-                    value={faqFormData.category}
-                    onChange={(e) => setFaqFormData({ ...faqFormData, category: e.target.value })}
-                    required
-                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
-                  >
-                    <option value="General">General</option>
-                    <option value="Orders">Orders</option>
-                    <option value="Payments">Payments</option>
-                    <option value="Shipping">Shipping</option>
-                    <option value="Account">Account</option>
-                  </select>
+      {/* Product Modal */}
+      {
+        showModal && (
+          <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
+            <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
+              <div className={styles.modalHeader}>
+                <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className={styles.closeBtn}
+                >
+                  ×
+                </button>
+              </div>
+              <form onSubmit={handleSubmit} className={styles.form}>
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Product Name *</label>
+                    <input
+                      type="text"
+                      name="name"
+                      value={formData.name}
+                      onChange={handleChange}
+                      required
+                      placeholder="Enter product name"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Search Key (Key terms for searching)</label>
+                    <input
+                      type="text"
+                      name="searchkey"
+                      value={formData.searchkey}
+                      onChange={handleChange}
+                      placeholder="e.g. red silk saree wedding"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Category *</label>
+                    <select
+                      name="category"
+                      value={formData.category}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="">Select category</option>
+                      <option value="Sarees">Sarees</option>
+                      <option value="Lehengas">Lehengas</option>
+                      <option value="Jewelry">Jewelry</option>
+                      <option value="Accessories">Accessories</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Type *</label>
+                    <select
+                      name="type"
+                      value={formData.type}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="clothing">Clothing</option>
+                      <option value="jewelry">Jewelry</option>
+                      <option value="accessories">Accessories</option>
+                      <option value="footwear">Footwear</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Status *</label>
+                    <select
+                      name="status"
+                      value={formData.status}
+                      onChange={handleChange}
+                      required
+                    >
+                      <option value="normal">Normal</option>
+                      <option value="trending">Trending</option>
+                      <option value="featured">Featured</option>
+                      <option value="most_bought">Most Bought</option>
+                      <option value="new_arrival">New Arrival</option>
+                      <option value="sale">Sale</option>
+                    </select>
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Brand</label>
+                    <input
+                      type="text"
+                      name="brand"
+                      value={formData.brand}
+                      onChange={handleChange}
+                      placeholder="Enter brand name"
+                    />
+                  </div>
+                </div>
+
+                <div className={styles.formRow}>
+                  <div className={styles.formGroup}>
+                    <label>Price *</label>
+                    <input
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      required
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Discount Price</label>
+                    <input
+                      type="number"
+                      name="discount_price"
+                      value={formData.discount_price}
+                      onChange={handleChange}
+                      min="0"
+                      step="0.01"
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className={styles.formGroup}>
+                    <label>Stock *</label>
+                    <input
+                      type="number"
+                      name="stock"
+                      value={formData.stock}
+                      onChange={handleChange}
+                      required
+                      min="0"
+                      placeholder="0"
+                    />
+                  </div>
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Question</label>
-                  <input
-                    type="text"
-                    value={faqFormData.question}
-                    onChange={(e) => setFaqFormData({ ...faqFormData, question: e.target.value })}
-                    required
-                    placeholder="Enter question"
-                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd' }}
-                  />
+                  <label>Image URLs</label>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input
+                      type="url"
+                      value={imageInput}
+                      onChange={(e) => setImageInput(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
+                      placeholder="https://example.com/image.jpg"
+                      style={{ flex: 1 }}
+                    />
+                    <button
+                      type="button"
+                      onClick={addImageUrl}
+                      className={styles.addBtn}
+                      style={{
+                        padding: '8px 16px',
+                        background: '#4CAF50',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      Add
+                    </button>
+                  </div>
+                  {formData.image_url.length > 0 && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {formData.image_url.map((url, index) => (
+                        <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
+                          <img
+                            src={url}
+                            alt={`Preview ${index + 1}`}
+                            style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
+                            onError={(e) => e.target.style.display = 'none'}
+                          />
+                          <span style={{ flex: 1, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                            {url}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => removeImageUrl(index)}
+                            style={{
+                              padding: '4px 8px',
+                              background: '#f44336',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className={styles.formGroup}>
-                  <label>Answer</label>
+                  <label>Description</label>
                   <textarea
-                    value={faqFormData.answer}
-                    onChange={(e) => setFaqFormData({ ...faqFormData, answer: e.target.value })}
-                    required
-                    placeholder="Enter answer"
-                    rows="5"
-                    style={{ padding: '10px', borderRadius: '4px', border: '1px solid #ddd', resize: 'vertical' }}
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    rows="3"
+                    placeholder="Enter product description"
                   />
+                </div>
+
+                <div className={styles.formGroup}>
+                  <label className={styles.checkboxLabel}>
+                    <input
+                      type="checkbox"
+                      name="is_featured"
+                      checked={formData.is_featured}
+                      onChange={handleChange}
+                    />
+                    <span>Mark as Featured</span>
+                  </label>
                 </div>
 
                 <div className={styles.formActions}>
-                  <button type="button" onClick={() => setShowFaqModal(false)} className={styles.cancelBtn}>
+                  <button
+                    type="button"
+                    onClick={() => setShowModal(false)}
+                    className={styles.cancelBtn}
+                  >
                     Cancel
                   </button>
                   <button type="submit" className={styles.saveBtn}>
-                    {editingFaq ? 'Update' : 'Save'} FAQ
+                    {editingProduct ? 'Update' : 'Create'} Product
                   </button>
                 </div>
-              </div>
-            </form>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {/* Product Modal */}
-      {showModal && (
-        <div className={styles.modalOverlay} onClick={() => setShowModal(false)}>
-          <div className={styles.modal} onClick={(e) => e.stopPropagation()}>
-            <div className={styles.modalHeader}>
-              <h2>{editingProduct ? 'Edit Product' : 'Add New Product'}</h2>
+      {/* Image Zoom Modal */}
+      {
+        selectedImage && (
+          <div className={styles.imageModalOverlay} onClick={() => setSelectedImage(null)}>
+            <div className={styles.imageModal} onClick={(e) => e.stopPropagation()}>
               <button
-                onClick={() => setShowModal(false)}
-                className={styles.closeBtn}
+                className={styles.imageModalClose}
+                onClick={() => setSelectedImage(null)}
               >
                 ×
               </button>
+              <img src={selectedImage} alt="Zoomed Product" />
             </div>
-            <form onSubmit={handleSubmit} className={styles.form}>
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>Product Name *</label>
-                  <input
-                    type="text"
-                    name="name"
-                    value={formData.name}
-                    onChange={handleChange}
-                    required
-                    placeholder="Enter product name"
-                  />
-                </div>
-              </div>
+          </div>
+        )
+      }
 
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>Search Key (Key terms for searching)</label>
-                  <input
-                    type="text"
-                    name="searchkey"
-                    value={formData.searchkey}
-                    onChange={handleChange}
-                    placeholder="e.g. red silk saree wedding"
-                  />
-                </div>
+      {/* Cancellation Reason Modal */}
+      {
+        showCancelModal && (
+          <div className={styles.modalOverlay} onClick={() => {
+            setShowCancelModal(false);
+            setCancelReason('');
+            setCancelingOrderId(null);
+          }}>
+            <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '400px' }}>
+              <div className={styles.modalHeader}>
+                <h2>Cancel Order</h2>
+                <button
+                  onClick={() => {
+                    setShowCancelModal(false);
+                    setCancelReason('');
+                    setCancelingOrderId(null);
+                  }}
+                  className={styles.closeBtn}
+                >
+                  &times;
+                </button>
               </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>Category *</label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="">Select category</option>
-                    <option value="Sarees">Sarees</option>
-                    <option value="Lehengas">Lehengas</option>
-                    <option value="Jewelry">Jewelry</option>
-                    <option value="Accessories">Accessories</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Type *</label>
-                  <select
-                    name="type"
-                    value={formData.type}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="clothing">Clothing</option>
-                    <option value="jewelry">Jewelry</option>
-                    <option value="accessories">Accessories</option>
-                    <option value="footwear">Footwear</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>Status *</label>
-                  <select
-                    name="status"
-                    value={formData.status}
-                    onChange={handleChange}
-                    required
-                  >
-                    <option value="normal">Normal</option>
-                    <option value="trending">Trending</option>
-                    <option value="featured">Featured</option>
-                    <option value="most_bought">Most Bought</option>
-                    <option value="new_arrival">New Arrival</option>
-                    <option value="sale">Sale</option>
-                  </select>
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Brand</label>
-                  <input
-                    type="text"
-                    name="brand"
-                    value={formData.brand}
-                    onChange={handleChange}
-                    placeholder="Enter brand name"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formRow}>
-                <div className={styles.formGroup}>
-                  <label>Price *</label>
-                  <input
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Discount Price</label>
-                  <input
-                    type="number"
-                    name="discount_price"
-                    value={formData.discount_price}
-                    onChange={handleChange}
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00"
-                  />
-                </div>
-                <div className={styles.formGroup}>
-                  <label>Stock *</label>
-                  <input
-                    type="number"
-                    name="stock"
-                    value={formData.stock}
-                    onChange={handleChange}
-                    required
-                    min="0"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div className={styles.formGroup}>
-                <label>Image URLs</label>
-                <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
-                  <input
-                    type="url"
-                    value={imageInput}
-                    onChange={(e) => setImageInput(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), addImageUrl())}
-                    placeholder="https://example.com/image.jpg"
-                    style={{ flex: 1 }}
-                  />
+              <div style={{ padding: '20px' }}>
+                <p style={{ marginBottom: '15px', color: '#666' }}>Please provide a reason for canceling order #{cancelingOrderId}.</p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="Enter cancellation reason (e.g. Out of stock, Customer request)..."
+                  rows="4"
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    borderRadius: '8px',
+                    border: '1px solid #ddd',
+                    marginBottom: '20px',
+                    fontFamily: 'inherit',
+                    fontSize: '14px'
+                  }}
+                />
+                <div style={{ display: 'flex', gap: '12px' }}>
                   <button
-                    type="button"
-                    onClick={addImageUrl}
-                    className={styles.addBtn}
-                    style={{
-                      padding: '8px 16px',
-                      background: '#4CAF50',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      cursor: 'pointer'
+                    onClick={() => {
+                      setShowCancelModal(false);
+                      setCancelReason('');
+                      setCancelingOrderId(null);
                     }}
+                    className={styles.secondaryBtn}
+                    style={{ flex: 1 }}
                   >
-                    Add
+                    Go Back
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!cancelReason.trim()) {
+                        alert('Please provide a reason');
+                        return;
+                      }
+                      handleStatusUpdate(cancelingOrderId, 'cancelled', 'order', cancelReason);
+                      setShowCancelModal(false);
+                      setCancelReason('');
+                      setCancelingOrderId(null);
+                      if (selectedOrder && selectedOrder.id === cancelingOrderId) {
+                        setSelectedOrder({ ...selectedOrder, order_status: 'cancelled', cancel_reason: cancelReason });
+                      }
+                    }}
+                    className={styles.deleteBtn}
+                    style={{ flex: 1, background: '#dc3545' }}
+                  >
+                    Confirm Cancel
                   </button>
                 </div>
-                {formData.image_url.length > 0 && (
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    {formData.image_url.map((url, index) => (
-                      <div key={index} style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px', background: '#f5f5f5', borderRadius: '4px' }}>
-                        <img
-                          src={url}
-                          alt={`Preview ${index + 1}`}
-                          style={{ width: '50px', height: '50px', objectFit: 'cover', borderRadius: '4px' }}
-                          onError={(e) => e.target.style.display = 'none'}
-                        />
-                        <span style={{ flex: 1, fontSize: '14px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                          {url}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={() => removeImageUrl(index)}
-                          style={{
-                            padding: '4px 8px',
-                            background: '#f44336',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer'
-                          }}
-                        >
-                          Remove
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
-
-              <div className={styles.formGroup}>
-                <label>Description</label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleChange}
-                  rows="3"
-                  placeholder="Enter product description"
-                />
-              </div>
-
-              <div className={styles.formGroup}>
-                <label className={styles.checkboxLabel}>
-                  <input
-                    type="checkbox"
-                    name="is_featured"
-                    checked={formData.is_featured}
-                    onChange={handleChange}
-                  />
-                  <span>Mark as Featured</span>
-                </label>
-              </div>
-
-              <div className={styles.formActions}>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className={styles.cancelBtn}
-                >
-                  Cancel
-                </button>
-                <button type="submit" className={styles.saveBtn}>
-                  {editingProduct ? 'Update' : 'Create'} Product
-                </button>
-              </div>
-            </form>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* Image Zoom Modal */}
-      {selectedImage && (
-        <div className={styles.imageModalOverlay} onClick={() => setSelectedImage(null)}>
-          <div className={styles.imageModal} onClick={(e) => e.stopPropagation()}>
-            <button
-              className={styles.imageModalClose}
-              onClick={() => setSelectedImage(null)}
-            >
-              ×
-            </button>
-            <img src={selectedImage} alt="Zoomed Product" />
-          </div>
-        </div>
-      )}
+        )
+      }
     </div>
   );
 }

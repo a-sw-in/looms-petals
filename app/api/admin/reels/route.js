@@ -1,11 +1,45 @@
-
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 
 const supabase = createClient(
 	process.env.NEXT_PUBLIC_SUPABASE_URL,
 	process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 );
+
+const supabaseAdmin = createClient(
+	process.env.NEXT_PUBLIC_SUPABASE_URL,
+	process.env.SUPABASE_SERVICE_ROLE_KEY
+);
+
+async function verifyAdmin() {
+	try {
+		const cookieStore = await cookies();
+		const token = cookieStore.get('admin_token')?.value;
+
+		if (!token || !supabaseAdmin) return null;
+
+		const { data: session } = await supabaseAdmin
+			.from('admin_sessions')
+			.select('*')
+			.eq('token', token)
+			.gt('expires_at', new Date().toISOString())
+			.single();
+
+		if (!session) return null;
+
+		const { data: user } = await supabaseAdmin
+			.from('users')
+			.select('*')
+			.eq('id', session.user_id)
+			.eq('role', 'admin')
+			.single();
+
+		return user;
+	} catch {
+		return null;
+	}
+}
 
 // GET - Fetch all reels
 export async function GET(request) {
@@ -46,6 +80,10 @@ export async function GET(request) {
 // POST - Create a new reel
 export async function POST(request) {
 	try {
+		const admin = await verifyAdmin();
+		if (!admin) {
+			return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+		}
 		const body = await request.json();
 		const { video_url, title, description } = body;
 
@@ -89,11 +127,15 @@ export async function POST(request) {
 // PUT - Update a reel
 export async function PUT(request) {
 	try {
+		const admin = await verifyAdmin();
+		if (!admin) {
+			return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+		}
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
-		
+
 		console.log("PUT request - ID:", id);
-		
+
 		if (!id) {
 			console.error("PUT error: No ID provided");
 			return NextResponse.json(
@@ -104,14 +146,14 @@ export async function PUT(request) {
 
 		const body = await request.json();
 		const { video_url, title, description } = body;
-		
+
 		console.log("PUT request - Body:", { video_url, title, description });
 
 		const updateData = {};
 		if (video_url !== undefined) updateData.video_url = video_url;
 		if (title !== undefined) updateData.title = title;
 		if (description !== undefined) updateData.description = description;
-		
+
 		console.log("PUT request - Update data:", updateData);
 
 		// First, try to update without .single() to see if row exists
@@ -151,6 +193,10 @@ export async function PUT(request) {
 // DELETE - Delete a reel
 export async function DELETE(request) {
 	try {
+		const admin = await verifyAdmin();
+		if (!admin) {
+			return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
+		}
 		const { searchParams } = new URL(request.url);
 		const id = searchParams.get("id");
 
