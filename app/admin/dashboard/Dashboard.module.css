@@ -352,8 +352,9 @@
   z-index: 1000;
   padding: 20px;
 }
-.modalContent{
-  background-color:wheat ;
+
+.modalContent {
+  background-color: wheat;
 }
 
 .modal {
@@ -658,4 +659,124 @@
     opacity: 1;
     transform: scale(1);
   }
+}
+
+/* Payments Tab Styles */
+.statsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 32px;
+}
+
+.statCard {
+  background: white;
+  padding: 24px;
+  border-radius: 12px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  transition: transform 0.3s ease;
+}
+
+.statCard:hover {
+  transform: translateY(-4px);
+}
+
+.statTitle {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.statValue {
+  font-size: 28px;
+  font-weight: 700;
+  color: #2d2d2d;
+  margin: 0;
+}
+
+.statSub {
+  font-size: 12px;
+  color: #888;
+  margin-top: 4px;
+}
+
+.tableContainer {
+  background: white;
+  border-radius: 12px;
+  padding: 24px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+  overflow-x: auto;
+}
+
+.tableTitle {
+  font-size: 18px;
+  margin: 0 0 20px 0;
+  color: #2d2d2d;
+  font-weight: 700;
+}
+
+.baseTable {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 800px;
+}
+
+.baseTable th {
+  background: #f8f9fa;
+  padding: 14px 16px;
+  text-align: left;
+  font-size: 13px;
+  font-weight: 600;
+  color: #666;
+  border-bottom: 2px solid #eee;
+}
+
+.baseTable td {
+  padding: 16px;
+  border-bottom: 1px solid #eee;
+  font-size: 14px;
+}
+
+.clickableRow:hover {
+  background: #f8f9fa;
+  cursor: pointer;
+}
+
+.methodBadge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.online {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.cod {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.statusBadgePaid {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #dcfce7;
+  color: #15803d;
+}
+
+.statusBadgePending {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: #fee2e2;
+  color: #b91c1c;
 }

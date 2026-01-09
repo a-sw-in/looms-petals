@@ -37,6 +37,7 @@ export default function AdminDashboard() {
   const [usersLoading, setUsersLoading] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [paymentsSort, setPaymentsSort] = useState('newest');
 
   useEffect(() => {
     checkAuth();
@@ -353,6 +354,25 @@ export default function AdminDashboard() {
     return filtered;
   };
 
+  const getSortedPayments = () => {
+    let sorted = [...orders];
+    if (paymentsSort === 'newest') {
+      sorted.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+    } else if (paymentsSort === 'oldest') {
+      sorted.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
+    } else if (paymentsSort === 'monthly') {
+      sorted.sort((a, b) => {
+        const dateA = new Date(a.created_at);
+        const dateB = new Date(b.created_at);
+        if (dateA.getFullYear() !== dateB.getFullYear()) {
+          return dateB.getFullYear() - dateA.getFullYear();
+        }
+        return dateB.getMonth() - dateA.getMonth();
+      });
+    }
+    return sorted;
+  };
+
   if (loading) {
     return (
       <div className={styles.loadingContainer}>
@@ -400,6 +420,12 @@ export default function AdminDashboard() {
             className={`${styles.tabBtn} ${activeTab === 'users' ? styles.tabActive : ''}`}
           >
             Users ({users.length})
+          </button>
+          <button
+            onClick={() => setActiveTab('payments')}
+            className={`${styles.tabBtn} ${activeTab === 'payments' ? styles.tabActive : ''}`}
+          >
+            Payments
           </button>
         </div>
 
@@ -821,6 +847,90 @@ export default function AdminDashboard() {
                   <p>No users found.</p>
                 </div>
               )}
+            </div>
+          </>
+        )}
+
+        {/* Payments Tab */}
+        {activeTab === 'payments' && (
+          <>
+            <div className={styles.toolbar}>
+              <h2 className={styles.pageTitle}>Financial Overview</h2>
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <select
+                  className={styles.filterSelect}
+                  value={paymentsSort}
+                  onChange={(e) => setPaymentsSort(e.target.value)}
+                  style={{ padding: '8px 12px', borderRadius: '6px', border: '1px solid #ddd' }}
+                >
+                  <option value="newest">Newest First</option>
+                  <option value="oldest">Oldest First</option>
+                  <option value="monthly">Monthly View</option>
+                </select>
+              </div>
+            </div>
+
+            <div className={styles.statsGrid}>
+              <div className={`${styles.statCard}`} style={{ borderLeft: '4px solid #7a2d2d' }}>
+                <h3 className={styles.statTitle}>Total Revenue</h3>
+                <p className={styles.statValue}>₹{orders.reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+              </div>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #00c853' }}>
+                <h3 className={styles.statTitle}>Online Payments (Razorpay/UPI)</h3>
+                <p className={styles.statValue} style={{ color: '#00c853' }}>₹{orders.filter(o => o.payment_method === 'online').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+                <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'online').length} Transactions</div>
+              </div>
+              <div className={styles.statCard} style={{ borderLeft: '4px solid #ffa000' }}>
+                <h3 className={styles.statTitle}>Cash on Delivery (COD)</h3>
+                <p className={styles.statValue} style={{ color: '#ffa000' }}>₹{orders.filter(o => o.payment_method === 'cod').reduce((acc, order) => acc + (order.total_amount || 0), 0).toLocaleString()}</p>
+                <div className={styles.statSub}>{orders.filter(o => o.payment_method === 'cod').length} Transactions</div>
+              </div>
+            </div>
+
+            <div className={styles.tableContainer}>
+              <h3 className={styles.tableTitle}>Recent Transactions</h3>
+              <table className={styles.baseTable}>
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Order ID</th>
+                    <th>Customer</th>
+                    <th>Method</th>
+                    <th>Amount</th>
+                    <th>Payment Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {getSortedPayments().map((order) => (
+                    <tr
+                      key={order.id}
+                      className={styles.clickableRow}
+                      onClick={() => {
+                        setSelectedOrder(order);
+                        setActiveTab('orders');
+                      }}
+                    >
+                      <td>{new Date(order.created_at).toLocaleDateString()}</td>
+                      <td style={{ fontWeight: '600' }}>#{order.id}</td>
+                      <td>
+                        <div style={{ fontWeight: '500' }}>{order.customer_name}</div>
+                        <div style={{ fontSize: '12px', color: '#666' }}>{order.customer_email}</div>
+                      </td>
+                      <td>
+                        <span className={`${styles.methodBadge} ${order.payment_method === 'online' ? styles.online : styles.cod}`}>
+                          {order.payment_method === 'online' ? 'Razorpay/UPI' : 'COD'}
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: '600' }}>₹{order.total_amount?.toLocaleString()}</td>
+                      <td>
+                        <span className={order.payment_status === 'paid' ? styles.statusBadgePaid : styles.statusBadgePending}>
+                          {order.payment_status || 'Pending'}
+                        </span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </div>
           </>
         )}
