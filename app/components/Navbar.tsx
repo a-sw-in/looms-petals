@@ -150,7 +150,7 @@ export function Navbar() {
             <button
               key={m.key}
               onClick={() => handleMenuClick(m.href)}
-              className={`tnq-menu-item ${router.pathname === m.href ? 'active' : ''}`}
+              className={`tnq-menu-item ${pathname === m.href ? 'active' : ''}`}
             >
               <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
               <span className="tnq-menu-label">{m.label}</span>
