@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
+import { sendOTPEmail } from "@/lib/nodemailer";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -90,37 +91,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Send OTP via email (using Resend API)
+    // Send OTP via email (using Nodemailer with Gmail)
     try {
-      const resendApiKey = process.env.RESEND_API_KEY;
-      
-      if (resendApiKey) {
-        const response = await fetch("https://api.resend.com/emails", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${resendApiKey}`,
-          },
-          body: JSON.stringify({
-            from: process.env.EMAIL_FROM || "onboarding@resend.dev",
-            to: email,
-            subject: "Your Verification Code",
-            html: `
-              <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-                <h2 style="color: #333;">Email Verification</h2>
-                <p>Your verification code is:</p>
-                <div style="background: #f5f5f5; padding: 20px; text-align: center; font-size: 32px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;">
-                  ${otp}
-                </div>
-                <p style="color: #666;">This code will expire in 10 minutes.</p>
-                <p style="color: #666;">If you didn't request this code, please ignore this email.</p>
-              </div>
-            `,
-          }),
-        });
-
-        if (!response.ok) {
-          console.error("Failed to send email via Resend");
+      if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+        const result = await sendOTPEmail(email, otp, "Your Login Verification Code");
+        
+        if (!result.success) {
+          console.error("Failed to send OTP email:", result.error);
+        } else {
+          console.log("✅ OTP email sent successfully");
         }
       } else {
         // For development: log OTP to console
