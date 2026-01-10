@@ -94,6 +94,23 @@
   gap: 8px;
   margin-bottom: 32px;
   border-bottom: 2px solid #e5e7eb;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #7a2d2d #f5f5f5;
+}
+
+.tabNav::-webkit-scrollbar {
+  height: 4px;
+}
+
+.tabNav::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.tabNav::-webkit-scrollbar-thumb {
+  background: #7a2d2d;
+  border-radius: 2px;
 }
 
 .tabBtn {
@@ -107,6 +124,8 @@
   cursor: pointer;
   transition: all 0.3s ease;
   margin-bottom: -2px;
+  white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .tabBtn:hover {
@@ -124,6 +143,22 @@
   justify-content: space-between;
   align-items: center;
   margin-bottom: 32px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.toolbarActions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.filterGroup {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
 }
 
 .pageTitle {
@@ -557,10 +592,38 @@
     font-size: 13px;
   }
 
+  .tabNav {
+    gap: 4px;
+    margin-bottom: 24px;
+  }
+
+  .tabBtn {
+    padding: 10px 16px;
+    font-size: 14px;
+  }
+
   .toolbar {
     flex-direction: column;
-    gap: 16px;
+    gap: 12px;
     align-items: flex-start;
+  }
+
+  .toolbarActions {
+    width: 100%;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .filterGroup {
+    width: 100%;
+  }
+
+  .filterGroup label {
+    min-width: 70px;
+  }
+
+  .filterGroup select {
+    flex: 1;
   }
 
   .addBtn {
@@ -588,7 +651,24 @@
 
 @media (max-width: 480px) {
   .pageTitle {
-    font-size: 22px;
+    font-size: 20px;
+  }
+
+  .tabBtn {
+    padding: 8px 12px;
+    font-size: 13px;
+  }
+
+  .toolbarActions {
+    gap: 10px;
+  }
+
+  .filterGroup {
+    font-size: 13px;
+  }
+
+  .filterGroup label {
+    font-size: 13px;
   }
 
   .grid {

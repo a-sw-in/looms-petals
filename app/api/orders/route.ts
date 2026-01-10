@@ -72,25 +72,32 @@ export async function POST(request: Request) {
         }
 
         // 3. Create Order
+        const orderData: any = {
+            user_id: userId || null,
+            customer_name: formData.fullName,
+            customer_email: formData.email,
+            customer_phone: formData.phone,
+            shipping_address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pinCode,
+            country: formData.country,
+            items: items, // JSONB structure
+            total_amount: total,
+            payment_method: formData.paymentMethod,
+            payment_status: paymentStatus,
+        };
+
+        // Add Razorpay payment details for online payments
+        if (formData.paymentMethod === 'online' && paymentDetails) {
+            orderData.razorpay_order_id = paymentDetails.razorpay_order_id || null;
+            orderData.razorpay_payment_id = paymentDetails.razorpay_payment_id || null;
+            orderData.razorpay_signature = paymentDetails.razorpay_signature || null;
+        }
+
         const { data: order, error: orderError } = await supabaseAdmin
             .from('orders')
-            .insert([
-                {
-                    user_id: userId || null,
-                    customer_name: formData.fullName,
-                    customer_email: formData.email,
-                    customer_phone: formData.phone,
-                    shipping_address: formData.address,
-                    city: formData.city,
-                    state: formData.state,
-                    pincode: formData.pinCode,
-                    country: formData.country,
-                    items: items, // JSONB structure
-                    total_amount: total,
-                    payment_method: formData.paymentMethod,
-                    payment_status: paymentStatus,
-                }
-            ])
+            .insert([orderData])
             .select()
             .single();
 

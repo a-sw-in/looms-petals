@@ -17,6 +17,8 @@
     "bcryptjs": "^3.0.3",
     "bootstrap": "^5.3.8",
     "dotenv": "^17.2.3",
+    "jspdf": "^4.0.0",
+    "jspdf-autotable": "^5.0.7",
     "mongoose": "^8.19.3",
     "next": "^16.1.1",
     "razorpay": "^2.9.6",

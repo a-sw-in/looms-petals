@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './Dashboard.module.css';
+import PrintOrdersModal from './PrintOrdersModal';
+import PrintPaymentsModal from './PrintPaymentsModal';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -50,6 +52,19 @@ export default function AdminDashboard() {
     answer: '',
     category: 'General'
   });
+  const [showPrintModal, setShowPrintModal] = useState(false);
+  const [showPrintPaymentsModal, setShowPrintPaymentsModal] = useState(false);
+  const [showCODPaymentModal, setShowCODPaymentModal] = useState(false);
+  const [codPaymentOrderId, setCodPaymentOrderId] = useState(null);
+  const [refunds, setRefunds] = useState([]);
+  const [refundsLoading, setRefundsLoading] = useState(false);
+  const [selectedRefund, setSelectedRefund] = useState(null);
+  const [showRefundModal, setShowRefundModal] = useState(false);
+  const [showAdminNotesModal, setShowAdminNotesModal] = useState(false);
+  const [pendingRefundStatus, setPendingRefundStatus] = useState(null);
+  const [adminNotesInput, setAdminNotesInput] = useState('');
+  const [orderSearchId, setOrderSearchId] = useState('');
+  const [refundSearchId, setRefundSearchId] = useState('');
 
   useEffect(() => {
     checkAuth();
@@ -148,6 +163,59 @@ export default function AdminDashboard() {
     } finally {
       setFaqsLoading(false);
     }
+  };
+
+  const fetchRefunds = async () => {
+    try {
+      setRefundsLoading(true);
+      const response = await fetch('/api/orders/refund');
+      const result = await response.json();
+      if (result.success) {
+        setRefunds(result.refunds);
+      }
+    } catch (error) {
+      console.error('Failed to fetch refunds:', error);
+    } finally {
+      setRefundsLoading(false);
+    }
+  };
+
+  const handleRefundStatusUpdate = async () => {
+    if (!pendingRefundStatus) return;
+    
+    try {
+      const response = await fetch('/api/admin/refunds', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          refundId: pendingRefundStatus.refundId, 
+          status: pendingRefundStatus.status, 
+          adminNotes: adminNotesInput,
+          processedBy: user?.email 
+        })
+      });
+      
+      const result = await response.json();
+      if (result.success) {
+        alert('Refund status updated successfully');
+        fetchRefunds();
+        setShowRefundModal(false);
+        setShowAdminNotesModal(false);
+        setPendingRefundStatus(null);
+        setAdminNotesInput('');
+      } else {
+        alert('Failed to update refund status');
+      }
+    } catch (error) {
+      console.error('Failed to update refund status:', error);
+      alert('An error occurred');
+    }
+  };
+
+  const openAdminNotesModal = (refundId, status) => {
+    setPendingRefundStatus({ refundId, status });
+    setAdminNotesInput('');
+    setShowAdminNotesModal(true);
   };
 
   const handleSaveFaq = async (e) => {
@@ -357,6 +425,37 @@ export default function AdminDashboard() {
     }
   };
 
+  const handlePaymentStatusClick = (order) => {
+    const currentStatus = order.payment_status || 'pending';
+    const paymentMethod = order.payment_method;
+
+    // If already paid, don't allow changing back to pending
+    if (currentStatus === 'paid') {
+      alert('Payment already confirmed as PAID. Cannot revert to pending.');
+      return;
+    }
+
+    // If pending and trying to mark as paid
+    if (currentStatus === 'pending') {
+      // For COD, show confirmation modal
+      if (paymentMethod === 'cod') {
+        setCodPaymentOrderId(order.id);
+        setShowCODPaymentModal(true);
+      } else {
+        // For online payments, mark as paid directly
+        handleStatusUpdate(order.id, 'paid', 'payment');
+      }
+    }
+  };
+
+  const confirmCODPayment = () => {
+    if (codPaymentOrderId) {
+      handleStatusUpdate(codPaymentOrderId, 'paid', 'payment');
+      setShowCODPaymentModal(false);
+      setCodPaymentOrderId(null);
+    }
+  };
+
   const getFilteredProducts = () => {
     let filtered = [...products];
     if (productFilterConfig.category !== 'all') {
@@ -379,9 +478,22 @@ export default function AdminDashboard() {
   const getFilteredAndSortedOrders = () => {
     let filteredOrders = [...orders];
 
+    // Apply Search by Order ID
+    if (orderSearchId.trim()) {
+      const searchQuery = orderSearchId.trim();
+      filteredOrders = filteredOrders.filter(order => 
+        order.id?.toString().includes(searchQuery)
+      );
+    }
+
     // Apply Filters
     if (filterConfig.order_status !== 'all') {
-      filteredOrders = filteredOrders.filter(order => (order.order_status || 'processing') === filterConfig.order_status);
+      filteredOrders = filteredOrders.filter(order => {
+        const orderStatus = order.order_status ? order.order_status.toLowerCase().trim() : 'processing';
+        const filterStatus = filterConfig.order_status.toLowerCase().trim();
+        console.log('Comparing:', { orderId: order.id, orderStatus, filterStatus, match: orderStatus === filterStatus });
+        return orderStatus === filterStatus;
+      });
     }
     if (filterConfig.payment_status !== 'all') {
       filteredOrders = filteredOrders.filter(order => (order.payment_status || 'pending') === filterConfig.payment_status);
@@ -512,6 +624,15 @@ export default function AdminDashboard() {
             FAQ ({faqs.length})
           </button>
           <button
+            onClick={() => {
+              setActiveTab('refunds');
+              if (refunds.length === 0) fetchRefunds();
+            }}
+            className={`${styles.tabBtn} ${activeTab === 'refunds' ? styles.tabActive : ''}`}
+          >
+            Refunds ({refunds.length})
+          </button>
+          <button
             onClick={() => setActiveTab('payments')}
             className={`${styles.tabBtn} ${activeTab === 'payments' ? styles.tabActive : ''}`}
           >
@@ -524,8 +645,8 @@ export default function AdminDashboard() {
           <>
             <div className={styles.toolbar}>
               <h2 className={styles.pageTitle}>Product Management</h2>
-              <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div className={styles.toolbarActions}>
+                <div className={styles.filterGroup}>
                   <label style={{ fontSize: '14px', fontWeight: '500' }}>Category:</label>
                   <select
                     value={productFilterConfig.category}
@@ -539,7 +660,7 @@ export default function AdminDashboard() {
                     <option value="Accessories">Accessories</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.filterGroup}>
                   <label style={{ fontSize: '14px', fontWeight: '500' }}>Type:</label>
                   <select
                     value={productFilterConfig.type}
@@ -644,8 +765,58 @@ export default function AdminDashboard() {
           <>
             <div className={styles.toolbar}>
               <h2 className={styles.pageTitle}>Order Management</h2>
-              <div style={{ display: 'flex', gap: '16px' }}>
+              <div className={styles.toolbarActions}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <input
+                    type="text"
+                    placeholder="Search by Order ID..."
+                    value={orderSearchId}
+                    onChange={(e) => setOrderSearchId(e.target.value)}
+                    style={{
+                      padding: '8px 12px',
+                      borderRadius: '6px',
+                      border: '1px solid #ddd',
+                      fontSize: '14px',
+                      width: '200px'
+                    }}
+                  />
+                  {orderSearchId && (
+                    <button
+                      onClick={() => setOrderSearchId('')}
+                      style={{
+                        padding: '8px 12px',
+                        background: '#6c757d',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '6px',
+                        cursor: 'pointer',
+                        fontSize: '14px',
+                        fontWeight: '600'
+                      }}
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                <button
+                  onClick={() => setShowPrintModal(true)}
+                  style={{
+                    padding: '8px 16px',
+                    background: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '6px'
+                  }}
+                >
+                  <span>🖨️</span> Print Orders
+                </button>
+                <div className={styles.filterGroup}>
                   <label style={{ fontSize: '14px', fontWeight: '500' }}>Status:</label>
                   <select
                     value={filterConfig.order_status}
@@ -659,7 +830,7 @@ export default function AdminDashboard() {
                     <option value="cancelled">Cancelled</option>
                   </select>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div className={styles.filterGroup}>
                   <label style={{ fontSize: '14px', fontWeight: '500' }}>Payment:</label>
                   <select
                     value={filterConfig.payment_status}
@@ -718,16 +889,20 @@ export default function AdminDashboard() {
                       {/* Payment Status with Toggle */}
                       <td style={{ padding: '12px' }}>
                         <button
-                          onClick={() => handleStatusUpdate(order.id, order.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handlePaymentStatusClick(order);
+                          }}
                           style={{
                             padding: '4px 8px',
                             borderRadius: '4px',
                             border: 'none',
-                            cursor: 'pointer',
+                            cursor: order.payment_status === 'paid' ? 'not-allowed' : 'pointer',
                             fontWeight: '600',
                             fontSize: '12px',
                             backgroundColor: order.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
-                            color: order.payment_status === 'paid' ? '#155724' : '#856404'
+                            color: order.payment_status === 'paid' ? '#155724' : '#856404',
+                            opacity: order.payment_status === 'paid' ? 0.7 : 1
                           }}
                         >
                           {order.payment_status === 'paid' ? 'PAID' : 'PENDING'}
@@ -736,21 +911,37 @@ export default function AdminDashboard() {
 
                       {/* Order Status Badge */}
                       <td style={{ padding: '12px' }}>
-                        <span style={{
-                          padding: '4px 8px',
-                          borderRadius: '12px',
-                          fontSize: '12px',
-                          fontWeight: '600',
-                          textTransform: 'uppercase',
-                          backgroundColor: order.order_status === 'delivered' ? '#d4edda' :
-                            order.order_status === 'shipped' ? '#cce5ff' :
-                              order.order_status === 'cancelled' ? '#f8d7da' : '#e2e3e5',
-                          color: order.order_status === 'delivered' ? '#155724' :
-                            order.order_status === 'shipped' ? '#004085' :
-                              order.order_status === 'cancelled' ? '#721c24' : '#383d41'
-                        }}>
-                          {order.order_status || 'Processing'}
-                        </span>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                          <span style={{
+                            padding: '4px 8px',
+                            borderRadius: '12px',
+                            fontSize: '12px',
+                            fontWeight: '600',
+                            textTransform: 'uppercase',
+                            backgroundColor: order.order_status === 'delivered' ? '#d4edda' :
+                              order.order_status === 'shipped' ? '#cce5ff' :
+                                order.order_status === 'cancelled' ? '#f8d7da' : '#e2e3e5',
+                            color: order.order_status === 'delivered' ? '#155724' :
+                              order.order_status === 'shipped' ? '#004085' :
+                                order.order_status === 'cancelled' ? '#721c24' : '#383d41'
+                          }}>
+                            {order.order_status || 'Processing'}
+                          </span>
+                          {order.is_cancelled && (
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              textTransform: 'uppercase',
+                              backgroundColor: '#fff3cd',
+                              color: '#856404',
+                              display: 'inline-block'
+                            }}>
+                              👤 User Cancelled
+                            </span>
+                          )}
+                        </div>
                       </td>
 
                       <td style={{ padding: '12px' }}>
@@ -1006,12 +1197,164 @@ export default function AdminDashboard() {
             </>
           )
         }
+
+        {/* Refunds Tab */}
+        {
+          activeTab === 'refunds' && (
+            <>
+              <div className={styles.toolbar}>
+                <h2 className={styles.pageTitle}>Refund Requests Management</h2>
+                <div className={styles.toolbarActions}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <input
+                      type="text"
+                      placeholder="Search by Order ID..."
+                      value={refundSearchId}
+                      onChange={(e) => setRefundSearchId(e.target.value)}
+                      style={{
+                        padding: '8px 12px',
+                        borderRadius: '6px',
+                        border: '1px solid #ddd',
+                        fontSize: '14px',
+                        width: '200px'
+                      }}
+                    />
+                    {refundSearchId && (
+                      <button
+                        onClick={() => setRefundSearchId('')}
+                        style={{
+                          padding: '8px 12px',
+                          background: '#6c757d',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '6px',
+                          cursor: 'pointer',
+                          fontSize: '14px',
+                          fontWeight: '600'
+                        }}
+                      >
+                        Clear
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    onClick={fetchRefunds}
+                    className={styles.addBtn}
+                    style={{ background: '#17a2b8' }}
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.tableContainer}>
+                <table className={styles.baseTable}>
+                  <thead>
+                    <tr>
+                      <th>Order ID</th>
+                      <th>Customer</th>
+                      <th>Status</th>
+                      <th>Amount</th>
+                      <th>Date Requested</th>
+                      <th style={{ width: '120px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {refundsLoading ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>Loading refund requests...</td></tr>
+                    ) : refunds.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No refund requests found.</td></tr>
+                    ) : (
+                      refunds
+                        .filter(refund => {
+                          if (!refundSearchId.trim()) return true;
+                          return refund.order_id?.toString().includes(refundSearchId.trim());
+                        })
+                        .map((refund) => (
+                        <tr key={refund.id}>
+                          <td style={{ fontWeight: '600', color: '#333' }}>#{refund.order_id}</td>
+                          <td>
+                            <div>{refund.customer_name || 'N/A'}</div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>{refund.customer_email}</div>
+                          </td>
+                          <td>
+                            <span style={{
+                              padding: '4px 12px',
+                              borderRadius: '12px',
+                              fontSize: '12px',
+                              fontWeight: '600',
+                              textTransform: 'uppercase',
+                              background: 
+                                refund.status === 'pending' ? '#fff3cd' :
+                                refund.status === 'approved' ? '#d4edda' :
+                                refund.status === 'processing' ? '#cce5ff' :
+                                refund.status === 'completed' ? '#d1e7dd' :
+                                refund.status === 'rejected' ? '#f8d7da' : '#e2e3e5',
+                              color:
+                                refund.status === 'pending' ? '#856404' :
+                                refund.status === 'approved' ? '#155724' :
+                                refund.status === 'processing' ? '#004085' :
+                                refund.status === 'completed' ? '#0f5132' :
+                                refund.status === 'rejected' ? '#721c24' : '#383d41'
+                            }}>
+                              {refund.status}
+                            </span>
+                          </td>
+                          <td style={{ fontWeight: '600' }}>₹{Number(refund.refund_amount || 0).toLocaleString()}</td>
+                          <td>{new Date(refund.created_at).toLocaleDateString()}</td>
+                          <td>
+                            <button
+                              onClick={() => {
+                                setSelectedRefund(refund);
+                                setShowRefundModal(true);
+                              }}
+                              style={{ 
+                                padding: '6px 12px', 
+                                background: '#007bff', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '4px', 
+                                cursor: 'pointer',
+                                width: '100%'
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        }
+
         {
           activeTab === 'payments' && (
             <>
               <div className={styles.toolbar}>
                 <h2 className={styles.pageTitle}>Financial Overview</h2>
                 <div style={{ display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => setShowPrintPaymentsModal(true)}
+                    style={{
+                      padding: '8px 16px',
+                      background: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '600',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '6px'
+                    }}
+                  >
+                    <span>🖨️</span> Print Payments
+                  </button>
                   <select
                     className={styles.filterSelect}
                     value={paymentsSort}
@@ -1166,6 +1509,37 @@ export default function AdminDashboard() {
               </div>
 
               <div className={styles.form}>
+                {/* User Cancelled Order Alert */}
+                {selectedOrder.is_cancelled && (
+                  <div style={{
+                    padding: '16px',
+                    background: '#fff3cd',
+                    border: '1px solid #ffc107',
+                    borderRadius: '8px',
+                    marginBottom: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                  }}>
+                    <span style={{ fontSize: '24px' }}>👤</span>
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#856404', fontSize: '14px' }}>
+                        User Cancelled Order
+                      </div>
+                      {selectedOrder.cancel_reason && (
+                        <div style={{ fontSize: '13px', color: '#856404', marginTop: '4px' }}>
+                          Reason: {selectedOrder.cancel_reason}
+                        </div>
+                      )}
+                      {selectedOrder.cancelled_at && (
+                        <div style={{ fontSize: '12px', color: '#666', marginTop: '4px' }}>
+                          Cancelled on: {new Date(selectedOrder.cancelled_at).toLocaleString()}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Order Status Bar */}
                 <div style={{
                   display: 'flex',
@@ -1199,16 +1573,17 @@ export default function AdminDashboard() {
                   <div>
                     <span style={{ fontSize: '14px', color: '#666' }}>Payment: </span>
                     <button
-                      onClick={() => handleStatusUpdate(selectedOrder.id, selectedOrder.payment_status === 'paid' ? 'pending' : 'paid', 'payment')}
+                      onClick={() => handlePaymentStatusClick(selectedOrder)}
                       style={{
                         padding: '4px 12px',
                         borderRadius: '12px',
                         border: 'none',
-                        cursor: 'pointer',
+                        cursor: selectedOrder.payment_status === 'paid' ? 'not-allowed' : 'pointer',
                         fontWeight: '600',
                         fontSize: '12px',
                         backgroundColor: selectedOrder.payment_status === 'paid' ? '#d4edda' : '#fff3cd',
-                        color: selectedOrder.payment_status === 'paid' ? '#155724' : '#856404'
+                        color: selectedOrder.payment_status === 'paid' ? '#155724' : '#856404',
+                        opacity: selectedOrder.payment_status === 'paid' ? 0.7 : 1
                       }}
                     >
                       {selectedOrder.payment_status === 'paid' ? 'PAID' : 'PENDING'}
@@ -1227,6 +1602,59 @@ export default function AdminDashboard() {
                     <p><strong>Email:</strong> {selectedOrder.customer_email}</p>
                     <p><strong>Phone:</strong> {selectedOrder.customer_phone}</p>
                     <p><strong>Payment Method:</strong> <span style={{ textTransform: 'uppercase', fontWeight: 'bold' }}>{selectedOrder.payment_method || 'N/A'}</span></p>
+                    
+                    {/* ADD RAZORPAY DETAILS HERE - Only show for online payments */}
+                    {selectedOrder.payment_method === 'online' && (
+                      <div style={{ marginTop: '16px', paddingTop: '16px', borderTop: '1px solid #e0e0e0' }}>
+                        <h4 style={{ marginBottom: '12px', color: '#2563eb', fontSize: '14px' }}>Razorpay Payment Details</h4>
+                        {selectedOrder.razorpay_order_id && (
+                          <p style={{ marginBottom: '8px' }}>
+                            <strong>Order ID:</strong> 
+                            <code style={{ 
+                              background: '#f1f5f9', 
+                              padding: '4px 8px', 
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              marginLeft: '8px',
+                              wordBreak: 'break-all',
+                              display: 'inline-block'
+                            }}>{selectedOrder.razorpay_order_id}</code>
+                          </p>
+                        )}
+                        {selectedOrder.razorpay_payment_id && (
+                          <p style={{ marginBottom: '8px' }}>
+                            <strong>Payment ID:</strong> 
+                            <code style={{ 
+                              background: '#f1f5f9', 
+                              padding: '4px 8px', 
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              marginLeft: '8px',
+                              wordBreak: 'break-all',
+                              display: 'inline-block'
+                            }}>{selectedOrder.razorpay_payment_id}</code>
+                          </p>
+                        )}
+                        {selectedOrder.razorpay_signature && (
+                          <p style={{ marginBottom: '8px' }}>
+                            <strong>Signature:</strong> 
+                            <code style={{ 
+                              background: '#f1f5f9', 
+                              padding: '4px 8px', 
+                              borderRadius: '4px',
+                              fontSize: '11px',
+                              marginLeft: '8px',
+                              wordBreak: 'break-all',
+                              display: 'inline-block',
+                              maxWidth: '100%'
+                            }}>{selectedOrder.razorpay_signature}</code>
+                          </p>
+                        )}
+                        {!selectedOrder.razorpay_order_id && !selectedOrder.razorpay_payment_id && (
+                          <p style={{ color: '#64748b', fontStyle: 'italic', fontSize: '13px' }}>No Razorpay details available for this order</p>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Shipping Address */}
@@ -1306,7 +1734,10 @@ export default function AdminDashboard() {
               <div className={styles.formActions}>
                 {selectedOrder.order_status !== 'shipped' && selectedOrder.order_status !== 'delivered' && selectedOrder.order_status !== 'cancelled' && (
                   <button
-                    onClick={() => handleStatusUpdate(selectedOrder.id, 'shipped', 'order')}
+                    onClick={() => {
+                      handleStatusUpdate(selectedOrder.id, 'shipped', 'order');
+                      setSelectedOrder(null);
+                    }}
                     className={styles.saveBtn}
                     style={{ background: '#007bff' }}
                   >
@@ -1316,7 +1747,10 @@ export default function AdminDashboard() {
 
                 {selectedOrder.order_status === 'shipped' && (
                   <button
-                    onClick={() => handleStatusUpdate(selectedOrder.id, 'delivered', 'order')}
+                    onClick={() => {
+                      handleStatusUpdate(selectedOrder.id, 'delivered', 'order');
+                      setSelectedOrder(null);
+                    }}
                     className={styles.saveBtn}
                     style={{ background: '#28a745' }}
                   >
@@ -1747,6 +2181,498 @@ export default function AdminDashboard() {
           </div>
         )
       }
+
+      {/* Print Orders Modal */}
+      {showPrintModal && (
+        <PrintOrdersModal 
+          orders={orders}
+          onClose={() => setShowPrintModal(false)}
+        />
+      )}
+
+      {/* Print Payments Modal */}
+      {showPrintPaymentsModal && (
+        <PrintPaymentsModal 
+          orders={orders}
+          onClose={() => setShowPrintPaymentsModal(false)}
+        />
+      )}
+
+      {/* COD Payment Confirmation Modal */}
+      {showCODPaymentModal && (
+        <div className={styles.modalOverlay} onClick={() => {
+          setShowCODPaymentModal(false);
+          setCodPaymentOrderId(null);
+        }}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '450px' }}>
+            <div className={styles.modalHeader}>
+              <h2>Confirm COD Payment</h2>
+              <button
+                onClick={() => {
+                  setShowCODPaymentModal(false);
+                  setCodPaymentOrderId(null);
+                }}
+                className={styles.closeBtn}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                background: '#fff3cd',
+                border: '1px solid #ffc107',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <p style={{ margin: '0 0 12px 0', fontWeight: '600', color: '#856404', fontSize: '15px' }}>
+                  ⚠️ Important Notice
+                </p>
+                <p style={{ margin: 0, color: '#856404', fontSize: '14px', lineHeight: '1.5' }}>
+                  Once you mark this payment as PAID, it <strong>cannot be reverted</strong> back to PENDING. 
+                  Please make sure you have received the cash payment before confirming.
+                </p>
+              </div>
+              
+              <p style={{ marginBottom: '24px', color: '#666', fontSize: '14px' }}>
+                Are you sure you want to mark Order #{codPaymentOrderId} as PAID?
+              </p>
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    setShowCODPaymentModal(false);
+                    setCodPaymentOrderId(null);
+                  }}
+                  className={styles.secondaryBtn}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmCODPayment}
+                  style={{
+                    flex: 1,
+                    padding: '10px 20px',
+                    background: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}
+                >
+                  Confirm Payment Received
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Refund Details Modal */}
+      {showRefundModal && selectedRefund && (
+        <div className={styles.modalOverlay} onClick={() => setShowRefundModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+            <div className={styles.modalHeader}>
+              <h2>Refund Request Details</h2>
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className={styles.closeBtn}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: '24px', overflowY: 'auto', flex: 1 }}>
+              {/* Order Information */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Order Information</h3>
+                <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px', display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Order ID:</span>
+                    <span style={{ fontWeight: '600' }}>#{selectedRefund.order_id}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Refund Amount:</span>
+                    <span style={{ fontWeight: '600', color: '#28a745' }}>₹{Number(selectedRefund.refund_amount || 0).toLocaleString()}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Payment Method:</span>
+                    <span style={{ fontWeight: '600', textTransform: 'uppercase' }}>{selectedRefund.payment_method}</span>
+                  </div>
+                  {selectedRefund.razorpay_payment_id && (
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: '#666' }}>Razorpay ID:</span>
+                      <span style={{ fontWeight: '600', fontSize: '12px', fontFamily: 'monospace', color: '#007bff' }}>{selectedRefund.razorpay_payment_id}</span>
+                    </div>
+                  )}
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Request Date:</span>
+                    <span style={{ fontWeight: '600' }}>{new Date(selectedRefund.created_at).toLocaleString()}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Customer Information</h3>
+                <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px', display: 'grid', gap: '8px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Name:</span>
+                    <span style={{ fontWeight: '600' }}>{selectedRefund.customer_name || 'N/A'}</span>
+                  </div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#666' }}>Email:</span>
+                    <span style={{ fontWeight: '600' }}>{selectedRefund.customer_email}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Refund Payment Details */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Refund Payment Details</h3>
+                <div style={{ background: '#e8f5e9', padding: '16px', borderRadius: '8px', border: '1px solid #4caf50' }}>
+                  {selectedRefund.payment_method?.toLowerCase() === 'cod' ? (
+                    // COD Order - Show customer's bank/UPI details
+                    selectedRefund.refund_mode === 'upi' ? (
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#2e7d32', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          💵 COD Order - Refund via UPI
+                        </div>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span style={{ color: '#666', fontSize: '14px' }}>UPI ID:</span>
+                          <span style={{ fontWeight: '600', fontSize: '14px', fontFamily: 'monospace', color: '#1976d2' }}>{selectedRefund.upi_id}</span>
+                        </div>
+                      </div>
+                    ) : selectedRefund.refund_mode === 'bank' ? (
+                      <div>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#2e7d32', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                          💵 COD Order - Refund via Bank Transfer
+                        </div>
+                        <div style={{ display: 'grid', gap: '8px' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666', fontSize: '14px' }}>Account Holder:</span>
+                            <span style={{ fontWeight: '600', fontSize: '14px' }}>{selectedRefund.bank_account_holder_name}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666', fontSize: '14px' }}>Account Number:</span>
+                            <span style={{ fontWeight: '600', fontSize: '14px', fontFamily: 'monospace' }}>{selectedRefund.bank_account_number}</span>
+                          </div>
+                          <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <span style={{ color: '#666', fontSize: '14px' }}>IFSC Code:</span>
+                            <span style={{ fontWeight: '600', fontSize: '14px', fontFamily: 'monospace', color: '#1976d2' }}>{selectedRefund.bank_ifsc_code}</span>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ textAlign: 'center', padding: '8px' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '8px' }}>💵</div>
+                        <div style={{ fontWeight: '600', color: '#2e7d32', fontSize: '16px' }}>Cash on Delivery</div>
+                        <div style={{ fontSize: '13px', color: '#666', marginTop: '4px' }}>Customer needs to provide refund details</div>
+                      </div>
+                    )
+                  ) : (
+                    // Online Payment - Show Razorpay details
+                    <div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#2e7d32', marginBottom: '12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        💳 Online Payment - Auto Refund via Razorpay
+                      </div>
+                      {(selectedRefund.razorpay_payment_id || selectedRefund.razorpay_order_id) ? (
+                        <div>
+                          {selectedRefund.razorpay_order_id && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ color: '#666', fontSize: '14px' }}>Razorpay Order ID:</span>
+                              <span style={{ fontWeight: '600', fontSize: '12px', fontFamily: 'monospace', color: '#1976d2' }}>{selectedRefund.razorpay_order_id}</span>
+                            </div>
+                          )}
+                          {selectedRefund.razorpay_payment_id && (
+                            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
+                              <span style={{ color: '#666', fontSize: '14px' }}>Razorpay Payment ID:</span>
+                              <span style={{ fontWeight: '600', fontSize: '12px', fontFamily: 'monospace', color: '#1976d2' }}>{selectedRefund.razorpay_payment_id}</span>
+                            </div>
+                          )}
+                          <div style={{ fontSize: '13px', color: '#666', fontStyle: 'italic', marginTop: '8px' }}>
+                            Refund will be automatically processed to customer's original payment method
+                          </div>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '13px', color: '#666', fontStyle: 'italic' }}>
+                          Refund will be processed to customer's original payment method
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Refund Details */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Refund Details</h3>
+                <div style={{ background: '#f8f9fa', padding: '16px', borderRadius: '8px' }}>
+                  <div style={{ marginBottom: '12px' }}>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#666', marginBottom: '4px' }}>Reason:</label>
+                    <p style={{ margin: 0, color: '#333', lineHeight: '1.5' }}>{selectedRefund.reason}</p>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#666', marginBottom: '4px' }}>Pickup Address:</label>
+                    <p style={{ margin: 0, color: '#333', lineHeight: '1.5' }}>{selectedRefund.pickup_address}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Current Status */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Current Status</h3>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                  <span style={{
+                    padding: '8px 16px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    textTransform: 'uppercase',
+                    background: 
+                      selectedRefund.status === 'pending' ? '#fff3cd' :
+                      selectedRefund.status === 'approved' ? '#d4edda' :
+                      selectedRefund.status === 'processing' ? '#cce5ff' :
+                      selectedRefund.status === 'completed' ? '#d1e7dd' :
+                      selectedRefund.status === 'rejected' ? '#f8d7da' : '#e2e3e5',
+                    color:
+                      selectedRefund.status === 'pending' ? '#856404' :
+                      selectedRefund.status === 'approved' ? '#155724' :
+                      selectedRefund.status === 'processing' ? '#004085' :
+                      selectedRefund.status === 'completed' ? '#0f5132' :
+                      selectedRefund.status === 'rejected' ? '#721c24' : '#383d41'
+                  }}>
+                    {selectedRefund.status}
+                  </span>
+                </div>
+              </div>
+
+              {/* Admin Notes */}
+              {selectedRefund.admin_notes && (
+                <div style={{ marginBottom: '24px' }}>
+                  <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Admin Notes</h3>
+                  <div style={{ background: '#fff3cd', padding: '16px', borderRadius: '8px', border: '1px solid #ffc107' }}>
+                    <p style={{ margin: 0, color: '#856404', lineHeight: '1.5' }}>{selectedRefund.admin_notes}</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Status Update Actions */}
+              <div style={{ marginBottom: '24px' }}>
+                <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '12px', color: '#333' }}>Update Status</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '8px' }}>
+                  <button
+                    onClick={() => openAdminNotesModal(selectedRefund.id, 'approved')}
+                    disabled={selectedRefund.status === 'approved' || selectedRefund.status === 'completed'}
+                    style={{
+                      padding: '10px',
+                      background: selectedRefund.status === 'approved' ? '#ccc' : '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: selectedRefund.status === 'approved' ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    onClick={() => openAdminNotesModal(selectedRefund.id, 'rejected')}
+                    disabled={selectedRefund.status === 'rejected' || selectedRefund.status === 'completed'}
+                    style={{
+                      padding: '10px',
+                      background: selectedRefund.status === 'rejected' ? '#ccc' : '#dc3545',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: selectedRefund.status === 'rejected' ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Reject
+                  </button>
+                  <button
+                    onClick={() => openAdminNotesModal(selectedRefund.id, 'processing')}
+                    disabled={selectedRefund.status === 'processing' || selectedRefund.status === 'completed'}
+                    style={{
+                      padding: '10px',
+                      background: selectedRefund.status === 'processing' ? '#ccc' : '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: selectedRefund.status === 'processing' ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Processing
+                  </button>
+                  <button
+                    onClick={() => openAdminNotesModal(selectedRefund.id, 'completed')}
+                    disabled={selectedRefund.status === 'completed'}
+                    style={{
+                      padding: '10px',
+                      background: selectedRefund.status === 'completed' ? '#ccc' : '#17a2b8',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: selectedRefund.status === 'completed' ? 'not-allowed' : 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Complete
+                  </button>
+                </div>
+              </div>
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowRefundModal(false)}
+                className={styles.secondaryBtn}
+                style={{ width: '100%' }}
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Admin Notes Modal */}
+      {showAdminNotesModal && pendingRefundStatus && (
+        <div className={styles.modalOverlay} onClick={() => {
+          setShowAdminNotesModal(false);
+          setPendingRefundStatus(null);
+          setAdminNotesInput('');
+        }}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '500px' }}>
+            <div className={styles.modalHeader}>
+              <h2>Add Admin Notes</h2>
+              <button
+                onClick={() => {
+                  setShowAdminNotesModal(false);
+                  setPendingRefundStatus(null);
+                  setAdminNotesInput('');
+                }}
+                className={styles.closeBtn}
+              >
+                &times;
+              </button>
+            </div>
+            <div style={{ padding: '24px' }}>
+              <div style={{
+                background: '#f8f9fa',
+                padding: '16px',
+                borderRadius: '8px',
+                marginBottom: '20px',
+                border: '1px solid #dee2e6'
+              }}>
+                <p style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#666' }}>
+                  <strong>Order ID:</strong> #{selectedRefund?.order_id}
+                </p>
+                <p style={{ margin: '0', fontSize: '14px', color: '#666' }}>
+                  <strong>New Status:</strong> <span style={{ 
+                    textTransform: 'uppercase', 
+                    fontWeight: '600',
+                    color: 
+                      pendingRefundStatus.status === 'approved' ? '#28a745' :
+                      pendingRefundStatus.status === 'rejected' ? '#dc3545' :
+                      pendingRefundStatus.status === 'processing' ? '#007bff' :
+                      pendingRefundStatus.status === 'completed' ? '#17a2b8' : '#333'
+                  }}>
+                    {pendingRefundStatus.status}
+                  </span>
+                </p>
+              </div>
+
+              <div style={{ marginBottom: '20px' }}>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: '600', color: '#333', marginBottom: '8px' }}>
+                  Admin Notes {pendingRefundStatus.status === 'rejected' ? <span style={{ color: '#dc3545' }}>*</span> : '(Optional)'}
+                </label>
+                <textarea
+                  value={adminNotesInput}
+                  onChange={(e) => setAdminNotesInput(e.target.value)}
+                  placeholder={
+                    pendingRefundStatus.status === 'approved' ? 'Add any notes about the approval...' :
+                    pendingRefundStatus.status === 'rejected' ? 'Please provide a reason for rejection...' :
+                    pendingRefundStatus.status === 'processing' ? 'Add processing details...' :
+                    'Add completion notes...'
+                  }
+                  rows={5}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    fontSize: '14px',
+                    border: '1px solid #ddd',
+                    borderRadius: '8px',
+                    resize: 'vertical',
+                    fontFamily: 'inherit'
+                  }}
+                />
+              </div>
+
+              {pendingRefundStatus.status === 'rejected' && !adminNotesInput.trim() && (
+                <div style={{
+                  background: '#fff3cd',
+                  border: '1px solid #ffc107',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  marginBottom: '20px',
+                  fontSize: '13px',
+                  color: '#856404'
+                }}>
+                  ⚠️ Please provide a reason for rejection
+                </div>
+              )}
+
+              <div style={{ display: 'flex', gap: '12px' }}>
+                <button
+                  onClick={() => {
+                    setShowAdminNotesModal(false);
+                    setPendingRefundStatus(null);
+                    setAdminNotesInput('');
+                  }}
+                  className={styles.secondaryBtn}
+                  style={{ flex: 1 }}
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={() => {
+                    if (pendingRefundStatus.status === 'rejected' && !adminNotesInput.trim()) {
+                      alert('Please provide a reason for rejection');
+                      return;
+                    }
+                    handleRefundStatusUpdate();
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '10px 20px',
+                    background: 
+                      pendingRefundStatus.status === 'approved' ? '#28a745' :
+                      pendingRefundStatus.status === 'rejected' ? '#dc3545' :
+                      pendingRefundStatus.status === 'processing' ? '#007bff' :
+                      '#17a2b8',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    cursor: 'pointer',
+                    fontWeight: '600',
+                    fontSize: '14px'
+                  }}
+                >
+                  Submit
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
