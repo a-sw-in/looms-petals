@@ -50,6 +50,11 @@ const nextConfig = {
       },
       {
         protocol: 'https',
+        hostname: 'i.pinimg.com',
+        pathname: '/**',
+      },
+      {
+        protocol: 'https',
         hostname: 'encrypted-tbn1.gstatic.com',
         pathname: '/**',
       },

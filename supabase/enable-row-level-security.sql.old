@@ -1,0 +1,149 @@
+-- Row Level Security (RLS) Policies for Enhanced Security
+-- Run this in your Supabase SQL Editor to add database-level security
+
+-- ============================================
+-- ORDERS TABLE
+-- ============================================
+
+ALTER TABLE orders ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can view only their own orders
+CREATE POLICY "Users can view own orders"
+ON orders FOR SELECT
+USING (customer_email = current_setting('request.jwt.claims', true)::json->>'email');
+
+-- Policy: Prevent direct inserts (must use API routes)
+CREATE POLICY "Orders must use API"
+ON orders FOR INSERT
+WITH CHECK (false);
+
+-- Policy: Prevent direct updates from client
+CREATE POLICY "Orders cannot be updated directly"
+ON orders FOR UPDATE
+WITH CHECK (false);
+
+-- Policy: Prevent direct deletes
+CREATE POLICY "Orders cannot be deleted directly"
+ON orders FOR DELETE
+USING (false);
+
+-- ============================================
+-- PRODUCTS TABLE
+-- ============================================
+
+ALTER TABLE products ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Anyone can view products (read-only)
+CREATE POLICY "Products are viewable by everyone"
+ON products FOR SELECT
+TO public
+USING (true);
+
+-- Policy: Prevent direct product inserts
+CREATE POLICY "Products cannot be inserted directly"
+ON products FOR INSERT
+WITH CHECK (false);
+
+-- Policy: Prevent direct product updates
+CREATE POLICY "Products cannot be updated directly"
+ON products FOR UPDATE
+WITH CHECK (false);
+
+-- Policy: Prevent direct product deletes
+CREATE POLICY "Products cannot be deleted directly"
+ON products FOR DELETE
+USING (false);
+
+-- ============================================
+-- REFUND REQUESTS TABLE
+-- ============================================
+
+ALTER TABLE refund_requests ENABLE ROW LEVEL SECURITY;
+
+-- Policy: Users can view only their own refund requests
+CREATE POLICY "Users can view own refund requests"
+ON refund_requests FOR SELECT
+USING (customer_email = current_setting('request.jwt.claims', true)::json->>'email');
+
+-- Policy: Prevent direct refund inserts (must use API)
+CREATE POLICY "Refunds must use API"
+ON refund_requests FOR INSERT
+WITH CHECK (false);
+
+-- Policy: Prevent direct refund updates
+CREATE POLICY "Refunds cannot be updated directly"
+ON refund_requests FOR UPDATE
+WITH CHECK (false);
+
+-- Policy: Prevent direct refund deletes
+CREATE POLICY "Refunds cannot be deleted directly"
+ON refund_requests FOR DELETE
+USING (false);
+
+-- ============================================
+-- USERS TABLE (if exists)
+-- ============================================
+
+-- Assuming you have a users table, add these policies:
+-- Uncomment if you have a users table
+
+-- ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+
+-- CREATE POLICY "Users can view own profile"
+-- ON users FOR SELECT
+-- USING (auth.uid() = id);
+
+-- CREATE POLICY "Users can update own profile"
+-- ON users FOR UPDATE
+-- USING (auth.uid() = id);
+
+-- CREATE POLICY "Prevent direct user inserts"
+-- ON users FOR INSERT
+-- WITH CHECK (false);
+
+-- CREATE POLICY "Prevent direct user deletes"
+-- ON users FOR DELETE
+-- USING (false);
+
+-- ============================================
+-- NOTES
+-- ============================================
+
+-- 1. After enabling RLS, only service role and authenticated users with proper policies can access data
+-- 2. Your API routes use service role key, so they bypass RLS and can still insert/update
+-- 3. Client-side code with anon key will be restricted by these policies
+-- 4. This prevents attackers from manipulating data even if they intercept API calls
+-- 5. To allow admin access, you may need to create specific admin policies
+
+-- ============================================
+-- VERIFY RLS IS ENABLED
+-- ============================================
+
+-- Run this to check which tables have RLS enabled:
+SELECT 
+    schemaname, 
+    tablename, 
+    rowsecurity 
+FROM pg_tables 
+WHERE schemaname = 'public' 
+ORDER BY tablename;
+
+-- Should show 'true' for rowsecurity column for orders, products, refund_requests
+
+-- ============================================
+-- VIEW ALL POLICIES
+-- ============================================
+
+-- Run this to see all policies:
+SELECT 
+    schemaname,
+    tablename,
+    policyname,
+    permissive,
+    roles,
+    cmd,
+    qual,
+    with_check
+FROM pg_policies
+WHERE schemaname = 'public'
+ORDER BY tablename, policyname;

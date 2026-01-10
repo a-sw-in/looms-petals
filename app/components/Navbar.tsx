@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useAuth } from '../context/AuthContext';
 import CartIcon from './CartIcon';
@@ -109,20 +109,21 @@ export function Navbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const router = useRouter();
+  const pathname = usePathname();
   const { user, logout } = useAuth();
 
   const menu = [
-    { key: 'All Jewellery', icon: <Icon.Earrings />, label: 'All Jewellery' },
-    { key: 'Earrings', icon: <Icon.Earrings />, label: 'Earrings' },
-    { key: 'Rings', icon: <Icon.Ring />, label: 'Rings' },
-    { key: 'Daily Wear', icon: <Icon.Daily />, label: 'Daily Wear' },
-    { key: 'Collections', icon: <Icon.Box />, label: 'Collections' },
-    { key: 'Gifting', icon: <Icon.Gift />, label: 'Gifting' },
-    { key: 'More', icon: <Icon.Brand />, label: 'More' },
+    { key: 'Jewellery', icon: <Icon.Diamond />, label: 'Jewellery', href: '/collections/jewellery' },
+    { key: 'Clothing', icon: <Icon.Store />, label: 'Clothing', href: '/collections/clothing' },
+    { key: 'Saree', icon: <Icon.Store />, label: 'Saree', href: '/collections/saree' },
+    { key: 'Lehengas', icon: <Icon.Store />, label: 'Lehengas', href: '/collections/lehengas' },
+    { key: 'Men', icon: <Icon.User />, label: 'Men', href: '/collections/men' },
+    { key: 'Women', icon: <Icon.User />, label: 'Women', href: '/collections/women' },
+    { key: 'Footwear', icon: <Icon.Brand />, label: 'Footwear', href: '/collections/footwear' },
   ];
 
-  const handleMenuClick = (key: string) => {
-    setActive(key);
+  const handleMenuClick = (href: string) => {
+    router.push(href);
     setMobileMenuOpen(false);
   };
 
@@ -148,8 +149,8 @@ export function Navbar() {
           {menu.map((m) => (
             <button
               key={m.key}
-              onClick={() => setActive(m.key)}
-              className={`tnq-menu-item ${active === m.key ? 'active' : ''}`}
+              onClick={() => handleMenuClick(m.href)}
+              className={`tnq-menu-item ${router.pathname === m.href ? 'active' : ''}`}
             >
               <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
               <span className="tnq-menu-label">{m.label}</span>

@@ -286,6 +286,25 @@ export default function CheckoutPage() {
 
   const createOrderInBackend = async (paymentDetails: any) => {
     try {
+      // For online payments, verify payment signature first
+      if (formData.paymentMethod === 'online' && paymentDetails) {
+        const verifyResponse = await fetch('/api/razorpay/verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            razorpay_order_id: paymentDetails.razorpay_order_id,
+            razorpay_payment_id: paymentDetails.razorpay_payment_id,
+            razorpay_signature: paymentDetails.razorpay_signature,
+          }),
+        });
+
+        const verifyResult = await verifyResponse.json();
+
+        if (!verifyResult.success) {
+          throw new Error('Payment verification failed. Please contact support.');
+        }
+      }
+
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
