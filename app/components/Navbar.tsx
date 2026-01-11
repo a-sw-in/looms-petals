@@ -226,8 +226,8 @@ export function Navbar() {
         {menu.map((m) => (
           <button
             key={m.key}
-            onClick={() => handleMenuClick(m.key)}
-            className={`tnq-mobile-menu-item ${active === m.key ? 'active' : ''}`}
+            onClick={() => handleMenuClick(m.href)}
+            className={`tnq-mobile-menu-item ${pathname === m.href ? 'active' : ''}`}
           >
             <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
             <span className="tnq-menu-label">{m.label}</span>

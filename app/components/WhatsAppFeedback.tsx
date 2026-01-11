@@ -4,7 +4,8 @@ import styles from './WhatsAppFeedback.module.css'
 
 const WhatsAppFeedback = () => {
   const [message, setMessage] = useState('')
-  const phoneNumber = '1234567890' // Replace with your actual WhatsApp number (with country code, no + or spaces)
+  // Remove + and spaces from phone number for WhatsApp format
+  const phoneNumber = process.env.NEXT_PUBLIC_ADMIN_PHONE?.replace(/[^0-9]/g, '') || '919876543210'
 
   const handleSendMessage = () => {
     if (!message.trim()) {

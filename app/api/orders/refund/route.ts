@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { sendRefundRequestEmail } from '@/lib/email';
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -105,6 +106,9 @@ export async function POST(request: Request) {
         { status: 500 }
       );
     }
+
+    // Send email notification to admin via Brevo
+    await sendRefundRequestEmail(refundRequest, order);
 
     return NextResponse.json({
       success: true,

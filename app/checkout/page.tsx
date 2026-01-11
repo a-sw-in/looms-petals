@@ -92,6 +92,16 @@ export default function CheckoutPage() {
     }
   }, []); // Run only on mount
 
+  // Pre-fill email from logged-in user
+  useEffect(() => {
+    if (user?.email) {
+      setFormData((prev) => ({
+        ...prev,
+        email: user.email,
+      }));
+    }
+  }, [user]);
+
   const validateForm = () => {
     const errors: Record<string, string> = {};
 
@@ -514,7 +524,10 @@ export default function CheckoutPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   className={formErrors.email ? styles.errorInput : ""}
+                  disabled
+                  readOnly
                   required
+                  style={{ backgroundColor: '#f0f0f0', cursor: 'not-allowed' }}
                 />
                 {formErrors.email && (
                   <span className={styles.errorText}>{formErrors.email}</span>
