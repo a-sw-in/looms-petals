@@ -33,19 +33,58 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 export function CartProvider({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
 
-  // Load cart from localStorage on mount
+  // Helper functions for cookie management
+  const setCookie = (name: string, value: string, days: number = 30) => {
+    const expires = new Date();
+    expires.setTime(expires.getTime() + days * 24 * 60 * 60 * 1000);
+    document.cookie = `${name}=${encodeURIComponent(value)};expires=${expires.toUTCString()};path=/;SameSite=Lax`;
+  };
+
+  const getCookie = (name: string): string | null => {
+    const nameEQ = name + "=";
+    const ca = document.cookie.split(';');
+    for (let i = 0; i < ca.length; i++) {
+      let c = ca[i];
+      while (c.charAt(0) === ' ') c = c.substring(1, c.length);
+      if (c.indexOf(nameEQ) === 0) return decodeURIComponent(c.substring(nameEQ.length, c.length));
+    }
+    return null;
+  };
+
+  // Load cart from localStorage and cookies on mount
   useEffect(() => {
-    const savedCart = localStorage.getItem("cart");
-    if (savedCart) {
-      setItems(JSON.parse(savedCart));
+    try {
+      // Try localStorage first (faster), then cookies as fallback
+      const localCart = localStorage.getItem("cart");
+      const cookieCart = getCookie("cart");
+      
+      const savedCart = localCart || cookieCart;
+      
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart);
+        console.log("✅ Cart loaded:", parsedCart.length, "items");
+        setItems(parsedCart);
+      } else {
+        console.log("ℹ️ No saved cart found");
+      }
+    } catch (error) {
+      console.error("❌ Failed to load cart data:", error);
+    } finally {
+      setIsLoaded(true);
     }
   }, []);
 
-  // Save cart to localStorage whenever it changes
+  // Save cart to both localStorage and cookies whenever it changes (only after initial load)
   useEffect(() => {
-    localStorage.setItem("cart", JSON.stringify(items));
-  }, [items]);
+    if (!isLoaded) return; // Don't save during initial load
+    
+    const cartData = JSON.stringify(items);
+    localStorage.setItem("cart", cartData);
+    setCookie("cart", cartData, 30);
+    console.log("💾 Cart saved:", items.length, "items");
+  }, [items, isLoaded]);
 
   const addToCart = (item: Omit<CartItem, "quantity">, quantity: number = 1): boolean => {
     let success = false;
