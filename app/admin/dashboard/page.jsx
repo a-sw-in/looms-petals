@@ -1043,24 +1043,26 @@ export default function AdminDashboard() {
                           </button>
                         )}
 
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setCancelingOrderId(order.id);
-                            setShowCancelModal(true);
-                          }}
-                          style={{
-                            padding: '6px 12px',
-                            background: '#dc3545',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '4px',
-                            cursor: 'pointer',
-                            fontSize: '13px'
-                          }}
-                        >
-                          Cancel
-                        </button>
+                        {order.order_status !== 'cancelled' && order.order_status !== 'delivered' && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setCancelingOrderId(order.id);
+                              setShowCancelModal(true);
+                            }}
+                            style={{
+                              padding: '6px 12px',
+                              background: '#dc3545',
+                              color: 'white',
+                              border: 'none',
+                              borderRadius: '4px',
+                              cursor: 'pointer',
+                              fontSize: '13px'
+                            }}
+                          >
+                            Cancel
+                          </button>
+                        )}
                       </td>
                     </tr>
                   ))}
