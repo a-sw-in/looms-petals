@@ -87,7 +87,7 @@ export default function CardSection() {
 					}
 
 					const discount = product.discount_price
-						? Math.round(((product.price - product.discount_price) / product.price) * 100)
+						? Math.round(((product.discount_price - product.price) / product.discount_price) * 100)
 						: 0;
 
 					return (
@@ -123,10 +123,10 @@ export default function CardSection() {
 								<div className={styles.priceSection}>
 									<div className={styles.priceRow}>
 										<span className={styles.currentPrice}>
-											₹{product.discount_price || product.price}
-										</span>
-										{product.discount_price && (
-											<span className={styles.originalPrice}>₹{product.price}</span>
+										₹{product.price}
+									</span>
+									{product.discount_price && (
+										<span className={styles.originalPrice}>₹{product.discount_price}</span>
 										)}
 									</div>
 								</div>

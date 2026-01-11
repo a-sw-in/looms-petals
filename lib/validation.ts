@@ -37,7 +37,7 @@ export const ageSchema = z.number()
 
 // Gender validation
 export const genderSchema = z.enum(['male', 'female', 'other', 'prefer-not-to-say'], {
-  errorMap: () => ({ message: 'Invalid gender selection' })
+  message: 'Invalid gender selection'
 });
 
 // OTP validation
@@ -89,7 +89,7 @@ export function validateEmail(email: string): { valid: boolean; error?: string }
     return { valid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { valid: false, error: error.errors[0].message };
+      return { valid: false, error: error.issues[0].message };
     }
     return { valid: false, error: 'Invalid email' };
   }
@@ -101,7 +101,7 @@ export function validatePassword(password: string): { valid: boolean; error?: st
     return { valid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { valid: false, error: error.errors[0].message };
+      return { valid: false, error: error.issues[0].message };
     }
     return { valid: false, error: 'Invalid password' };
   }
@@ -113,7 +113,7 @@ export function validatePhone(phone: string): { valid: boolean; error?: string }
     return { valid: true };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      return { valid: false, error: error.errors[0].message };
+      return { valid: false, error: error.issues[0].message };
     }
     return { valid: false, error: 'Invalid phone number' };
   }
@@ -126,7 +126,7 @@ export function validate<T>(schema: z.ZodSchema<T>, data: unknown): { success: t
     return { success: true, data: validatedData };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const firstError = error.errors[0];
+      const firstError = error.issues[0];
       return { success: false, error: `${firstError.path.join('.')}: ${firstError.message}` };
     }
     return { success: false, error: 'Validation failed' };

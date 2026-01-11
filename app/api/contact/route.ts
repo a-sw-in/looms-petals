@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransporter } from '@/lib/nodemailer';
-import { apiRateLimit } from '@/lib/rateLimit';
+import { contactRateLimit } from '@/lib/rateLimit';
 import { validate, contactFormSchema } from '@/lib/validation';
-import { sanitizeText } from '@/lib/sanitize';
+import { sanitizeText, escapeHTML } from '@/lib/sanitize';
 
 // Brevo API helper for admin emails
 async function sendBrevoEmail(to: string, subject: string, htmlContent: string, replyTo?: string) {
@@ -42,8 +42,24 @@ async function sendBrevoEmail(to: string, subject: string, htmlContent: string, 
 
 export async function POST(request: NextRequest) {
   try {
-    // Rate limiting - 30 requests per minute
-    const rateLimit = apiRateLimit(request);
+    // CSRF Protection - Check origin header
+    const origin = request.headers.get('origin');
+    const allowedOrigins = [
+      process.env.NEXT_PUBLIC_APP_URL,
+      'http://localhost:3000',
+      'http://localhost:3001'
+    ].filter(Boolean);
+
+    if (origin && !allowedOrigins.includes(origin)) {
+      console.error('CSRF attempt detected from:', origin);
+      return NextResponse.json(
+        { message: 'Invalid request origin' },
+        { status: 403 }
+      );
+    }
+
+    // Rate limiting - 5 requests per minute (strict for contact forms)
+    const rateLimit = contactRateLimit(request);
     if (!rateLimit.allowed) {
       const resetInSeconds = rateLimit.resetTime 
         ? Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
@@ -68,14 +84,23 @@ export async function POST(request: NextRequest) {
 
     const { name, email, phone, subject, message } = validation.data;
 
-    // Sanitize inputs
+    // Sanitize inputs to prevent XSS and email injection
     const sanitizedData = {
-      name: sanitizeText(name),
-      email: sanitizeText(email),
-      phone: sanitizeText(phone),
-      subject: sanitizeText(subject),
-      message: sanitizeText(message),
+      name: escapeHTML(sanitizeText(name)),
+      email: escapeHTML(sanitizeText(email)),
+      phone: phone ? escapeHTML(sanitizeText(phone)) : '',
+      subject: escapeHTML(sanitizeText(subject)),
+      message: escapeHTML(sanitizeText(message)),
     };
+
+    // Additional email validation to prevent email injection
+    const emailRegex = /^[a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(sanitizedData.email)) {
+      return NextResponse.json(
+        { message: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
 
     // Admin email from environment variable
     const adminEmail = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;

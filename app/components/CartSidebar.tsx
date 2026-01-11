@@ -60,7 +60,7 @@ export default function CartSidebar() {
           <>
             <div className={styles.items}>
               {items.map((item, index) => {
-                const price = item.discount_price || item.price;
+                const price = item.price;
                 const itemKey = `${item.id}-${item.selectedSize || ""}-${item.selectedColor || ""}`;
                 
                 // Parse image_url to get the first image if it's an array

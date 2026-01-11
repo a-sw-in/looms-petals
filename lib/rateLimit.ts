@@ -82,10 +82,10 @@ export function rateLimit(
 }
 
 /**
- * Strict rate limiting for sensitive operations (e.g., password reset)
+ * Strict rate limiting for contact forms and sensitive operations
  */
-export function strictRateLimit(request: NextRequest, identifier?: string): RateLimitResult {
-  return rateLimit(request, 3, 15 * 60 * 1000, identifier); // 3 attempts per 15 minutes
+export function contactRateLimit(request: NextRequest, identifier?: string): RateLimitResult {
+  return rateLimit(request, 5, 60 * 1000, identifier); // 5 attempts per minute
 }
 
 /**

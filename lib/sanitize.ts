@@ -16,7 +16,7 @@ export function sanitizeHTML(
     ALLOW_DATA_ATTR: false,
   };
 
-  return DOMPurify.sanitize(dirty, config);
+  return DOMPurify.sanitize(dirty, config).toString();
 }
 
 /**
@@ -28,7 +28,7 @@ export function sanitizeText(dirty: string): string {
   return DOMPurify.sanitize(dirty, {
     ALLOWED_TAGS: [],
     ALLOWED_ATTR: [],
-  });
+  }).toString();
 }
 
 /**

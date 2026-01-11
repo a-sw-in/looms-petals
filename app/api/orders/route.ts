@@ -1,9 +1,23 @@
 import { NextResponse } from 'next/server';
 import { supabase, supabaseAdmin } from '@/lib/supabase';
 import { sendOrderEmail } from '@/lib/email';
+import { apiRateLimit } from '@/lib/rateLimit';
+import { NextRequest } from 'next/server';
 
-export async function POST(request: Request) {
+// Store recent order attempts to prevent duplicates
+const recentOrders = new Map<string, number>();
+
+export async function POST(request: NextRequest) {
     try {
+        // 1. Rate Limiting - 1 order per minute per IP
+        const rateLimit = apiRateLimit(request);
+        if (!rateLimit.allowed) {
+            return NextResponse.json(
+                { success: false, message: 'Too many order attempts. Please wait a moment.' },
+                { status: 429 }
+            );
+        }
+
         const body = await request.json();
         const { formData, items, total, paymentDetails, userId } = body;
 
@@ -14,6 +28,27 @@ export async function POST(request: Request) {
             );
         }
 
+        // 2. Order Deduplication - Prevent duplicate submissions
+        const orderHash = `${formData.email}-${JSON.stringify(items)}-${total}`;
+        const lastOrderTime = recentOrders.get(orderHash);
+        const now = Date.now();
+        
+        if (lastOrderTime && (now - lastOrderTime) < 60000) { // 1 minute window
+            return NextResponse.json(
+                { success: false, message: 'Duplicate order detected. Please wait before resubmitting.' },
+                { status: 400 }
+            );
+        }
+        
+        recentOrders.set(orderHash, now);
+        
+        // Cleanup old entries (older than 5 minutes)
+        for (const [hash, time] of recentOrders.entries()) {
+            if (now - time > 300000) {
+                recentOrders.delete(hash);
+            }
+        }
+
         if (!supabaseAdmin) {
             console.error('Supabase Admin client not initialized');
             return NextResponse.json(
@@ -22,9 +57,54 @@ export async function POST(request: Request) {
             );
         }
 
+        // 3. SERVER-SIDE PRICE CALCULATION - NEVER TRUST FRONTEND
+        let calculatedTotal = 0;
+        const validatedItems = [];
+        
+        for (const item of items) {
+            // Fetch actual price from database
+            const { data: product, error: productError } = await supabaseAdmin
+                .from('products')
+                .select('price, stock, name')
+                .eq('id', item.id)
+                .single();
+            
+            if (productError || !product) {
+                return NextResponse.json(
+                    { success: false, message: `Invalid product: ${item.name || item.id}` },
+                    { status: 400 }
+                );
+            }
+            
+            // Use database price, NOT frontend price
+            const itemTotal = product.price * item.quantity;
+            calculatedTotal += itemTotal;
+            
+            validatedItems.push({
+                ...item,
+                price: product.price, // Enforce server-side price
+                name: product.name,
+            });
+        }
+        
+        // 4. Verify total amount matches calculation (tolerance: ₹1 for rounding)
+        const priceDifference = Math.abs(calculatedTotal - total);
+        if (priceDifference > 1) {
+            console.error('Price manipulation detected:', {
+                submitted: total,
+                calculated: calculatedTotal,
+                difference: priceDifference
+            });
+            
+            return NextResponse.json(
+                { success: false, message: 'Price verification failed. Please refresh and try again.' },
+                { status: 400 }
+            );
+        }
+
         let paymentStatus = 'pending';
 
-        // Payment Verification for Online Orders
+        // 5. Payment Verification for Online Orders
         if (formData.paymentMethod === 'online') {
             if (!paymentDetails || !paymentDetails.razorpay_payment_id || !paymentDetails.razorpay_order_id || !paymentDetails.razorpay_signature) {
                 return NextResponse.json(
@@ -33,27 +113,112 @@ export async function POST(request: Request) {
                 );
             }
 
+            // Verify Razorpay signature
             const crypto = require('crypto');
             const hmac = crypto.createHmac('sha256', process.env.RAZORPAY_KEY_SECRET);
             hmac.update(paymentDetails.razorpay_order_id + "|" + paymentDetails.razorpay_payment_id);
             const generated_signature = hmac.digest('hex');
 
-            if (generated_signature === paymentDetails.razorpay_signature) {
-                paymentStatus = 'paid';
-            } else {
+            if (generated_signature !== paymentDetails.razorpay_signature) {
+                console.error('Payment signature verification failed:', {
+                    order_id: paymentDetails.razorpay_order_id,
+                    payment_id: paymentDetails.razorpay_payment_id
+                });
+                
                 return NextResponse.json(
                     { success: false, message: 'Payment verification failed: Invalid signature' },
                     { status: 400 }
                 );
             }
+            
+            // Additional verification: Fetch payment details from Razorpay
+            try {
+                console.log('🔍 Starting Razorpay payment verification...');
+                console.log('🔑 Environment Check:', {
+                    hasKeyId: !!process.env.RAZORPAY_KEY_ID,
+                    hasKeySecret: !!process.env.RAZORPAY_KEY_SECRET,
+                    keyIdPrefix: process.env.RAZORPAY_KEY_ID?.substring(0, 8)
+                });
+                
+                const paymentResponse = await fetch(
+                    `https://api.razorpay.com/v1/payments/${paymentDetails.razorpay_payment_id}`,
+                    {
+                        headers: {
+                            'Authorization': `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')}`,
+                        },
+                    }
+                );
+                
+                console.log('📡 Razorpay API Response Status:', paymentResponse.status);
+                console.log('📡 Response OK?', paymentResponse.ok);
+                
+                if (paymentResponse.ok) {
+                    const paymentData = await paymentResponse.json();
+                    console.log('💳 Payment Data Retrieved:', {
+                        status: paymentData.status,
+                        amount: paymentData.amount,
+                        currency: paymentData.currency,
+                        method: paymentData.method
+                    });
+                    
+                    // Verify payment status
+                    if (paymentData.status !== 'captured' && paymentData.status !== 'authorized') {
+                        console.error('❌ Payment status not valid:', paymentData.status);
+                        return NextResponse.json(
+                            { success: false, message: 'Payment not completed. Status: ' + paymentData.status },
+                            { status: 400 }
+                        );
+                    }
+                    
+                    // Verify payment amount matches order total (in paise)
+                    const expectedAmount = Math.round(calculatedTotal * 100);
+                    console.log('💰 Amount Check:', {
+                        expected: expectedAmount,
+                        received: paymentData.amount,
+                        difference: Math.abs(paymentData.amount - expectedAmount)
+                    });
+                    
+                    if (Math.abs(paymentData.amount - expectedAmount) > 100) { // 1 rupee tolerance
+                        console.error('❌ Payment amount mismatch:', {
+                            expected: expectedAmount,
+                            received: paymentData.amount
+                        });
+                        
+                        return NextResponse.json(
+                            { success: false, message: 'Payment amount verification failed' },
+                            { status: 400 }
+                        );
+                    }
+                    
+                    console.log('✅ Payment verification successful!');
+                    paymentStatus = 'paid';
+                } else {
+                    const errorText = await paymentResponse.text();
+                    console.error('❌ Razorpay API Error:', {
+                        status: paymentResponse.status,
+                        statusText: paymentResponse.statusText,
+                        errorBody: errorText
+                    });
+                    return NextResponse.json(
+                        { success: false, message: 'Payment verification failed with gateway' },
+                        { status: 400 }
+                    );
+                }
+            } catch (verifyError) {
+                console.error('❌ Razorpay verification exception:', verifyError);
+                return NextResponse.json(
+                    { success: false, message: 'Payment verification error' },
+                    { status: 500 }
+                );
+            }
         }
 
 
-        // 1 & 2. Atomic Stock Validation and Deduction
+        // 6. Atomic Stock Validation and Deduction
         // We use the custom PostgreSQL function 'deduct_order_stock' to handle this
         // in a single database transaction to prevent race conditions (overselling).
         const { data: stockResult, error: rpcError } = await supabaseAdmin.rpc('deduct_order_stock', {
-            items_json: items
+            items_json: validatedItems // Use server-validated items with correct prices
         });
 
         if (rpcError) {
@@ -71,7 +236,7 @@ export async function POST(request: Request) {
             );
         }
 
-        // 3. Create Order
+        // 7. Create Order with validated data
         const orderData: any = {
             user_id: userId || null,
             customer_name: formData.fullName,
@@ -82,8 +247,8 @@ export async function POST(request: Request) {
             state: formData.state,
             pincode: formData.pinCode,
             country: formData.country,
-            items: items, // JSONB structure
-            total_amount: total,
+            items: validatedItems, // Use validated items with server-side prices
+            total_amount: calculatedTotal, // Use server-calculated total
             payment_method: formData.paymentMethod,
             payment_status: paymentStatus,
         };
@@ -109,12 +274,15 @@ export async function POST(request: Request) {
             );
         }
 
-        // 4. Send Email Notification (Async - don't block response)
+        // 8. Send Email Notification (Async - don't block response)
         // We await it here to ensure it tries to send, but wrapped in try-catch in utility causing no crash
         // For better performance in high-scale, this should be a background job.
         console.log('Attempting to send order email...');
         const emailResult = await sendOrderEmail(order);
         console.log('Email sending result:', emailResult);
+
+        // Clear order deduplication hash after successful order
+        recentOrders.delete(orderHash);
 
         return NextResponse.json({ success: true, orderId: order.id }, { status: 200 });
 

@@ -107,7 +107,7 @@ export default function Trend() {
 								<h3 className={styles.title}>{product.name}</h3>
 								<div className={styles.category}>{product.category}</div>
 								<div className={styles.price}>
-									₹ {product.discount_price || product.price}
+									₹ {product.price}
 								</div>
 							</div>
 						</article>

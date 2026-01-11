@@ -437,7 +437,7 @@ export default function CheckoutPage() {
             <h2>Order Summary</h2>
             <div className={styles.items}>
               {items.map((item, index) => {
-                const price = item.discount_price || item.price;
+                const price = item.price;
                 return (
                   <div key={index} className={styles.item}>
                     <div className={styles.itemImage}>
