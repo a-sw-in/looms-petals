@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { loginRateLimit } from "@/lib/rateLimit";
+import { validate, loginSchema } from "@/lib/validation";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,15 +11,34 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password } = await request.json();
-
-    // Validation
-    if (!email || !password) {
+    // Rate limiting - 5 attempts per minute per IP
+    const rateLimit = loginRateLimit(request);
+    if (!rateLimit.allowed) {
+      const resetInSeconds = rateLimit.resetTime 
+        ? Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+        : 60;
+      
       return NextResponse.json(
-        { success: false, message: "Email and password are required" },
+        { 
+          success: false, 
+          message: `Too many login attempts. Please try again in ${resetInSeconds} seconds.` 
+        },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Input validation with Zod
+    const validation = validate(loginSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, message: validation.error },
         { status: 400 }
       );
     }
+
+    const { email, password } = validation.data;
 
     // Find user by email
     const { data: user, error: userError } = await supabase
@@ -79,7 +100,7 @@ export async function POST(request: NextRequest) {
 
     // Create new session
     const sessionToken = generateSecureToken();
-    const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000); // 30 days
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // Reduced from 30 days to 7 days
 
     const { error: sessionError } = await supabase
       .from("user_sessions")
@@ -115,8 +136,8 @@ export async function POST(request: NextRequest) {
     response.cookies.set("session_token", sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === "production",
-      sameSite: "lax",
-      maxAge: 30 * 24 * 60 * 60, // 30 days
+      sameSite: "strict", // Changed from "lax" to "strict" for better security
+      maxAge: 7 * 24 * 60 * 60, // Reduced from 30 days to 7 days
       path: "/",
     });
 

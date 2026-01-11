@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createTransporter } from '@/lib/nodemailer';
+import { apiRateLimit } from '@/lib/rateLimit';
+import { validate, contactFormSchema } from '@/lib/validation';
+import { sanitizeText } from '@/lib/sanitize';
 
 // Brevo API helper for admin emails
 async function sendBrevoEmail(to: string, subject: string, htmlContent: string, replyTo?: string) {
@@ -39,15 +42,40 @@ async function sendBrevoEmail(to: string, subject: string, htmlContent: string, 
 
 export async function POST(request: NextRequest) {
   try {
-    const { name, email, phone, subject, message } = await request.json();
-
-    // Validate input
-    if (!name || !email || !subject || !message) {
+    // Rate limiting - 30 requests per minute
+    const rateLimit = apiRateLimit(request);
+    if (!rateLimit.allowed) {
+      const resetInSeconds = rateLimit.resetTime 
+        ? Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+        : 60;
+      
       return NextResponse.json(
-        { message: 'All required fields must be filled' },
+        { message: `Too many requests. Please try again in ${resetInSeconds} seconds.` },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Input validation with Zod
+    const validation = validate(contactFormSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { message: validation.error },
         { status: 400 }
       );
     }
+
+    const { name, email, phone, subject, message } = validation.data;
+
+    // Sanitize inputs
+    const sanitizedData = {
+      name: sanitizeText(name),
+      email: sanitizeText(email),
+      phone: sanitizeText(phone),
+      subject: sanitizeText(subject),
+      message: sanitizeText(message),
+    };
 
     // Admin email from environment variable
     const adminEmail = process.env.ADMIN_EMAIL || process.env.GMAIL_USER;
@@ -140,38 +168,38 @@ export async function POST(request: NextRequest) {
           </div>
           <div class="content">
             <div style="margin-bottom: 20px;">
-              <span class="badge">${subject}</span>
+              <span class="badge">${sanitizedData.subject}</span>
             </div>
             
             <div class="info-row">
               <span class="info-label">👤 Name:</span>
-              <span class="info-value">${name}</span>
+              <span class="info-value">${sanitizedData.name}</span>
             </div>
             
             <div class="info-row">
               <span class="info-label">📧 Email:</span>
-              <span class="info-value"><a href="mailto:${email}" style="color: #667eea; text-decoration: none;">${email}</a></span>
+              <span class="info-value"><a href="mailto:${sanitizedData.email}" style="color: #667eea; text-decoration: none;">${sanitizedData.email}</a></span>
             </div>
             
-            ${phone ? `
+            ${sanitizedData.phone ? `
             <div class="info-row">
               <span class="info-label">📱 Phone:</span>
-              <span class="info-value"><a href="tel:${phone}" style="color: #667eea; text-decoration: none;">${phone}</a></span>
+              <span class="info-value"><a href="tel:${sanitizedData.phone}" style="color: #667eea; text-decoration: none;">${sanitizedData.phone}</a></span>
             </div>
             ` : ''}
             
             <div class="info-row">
               <span class="info-label">📋 Subject:</span>
-              <span class="info-value">${subject.charAt(0).toUpperCase() + subject.slice(1)}</span>
+              <span class="info-value">${sanitizedData.subject.charAt(0).toUpperCase() + sanitizedData.subject.slice(1)}</span>
             </div>
             
             <div class="message-box">
               <h3>💬 Message</h3>
-              <div class="message-content">${message}</div>
+              <div class="message-content">${sanitizedData.message}</div>
             </div>
             
             <div class="footer">
-              <p><strong>Quick Reply:</strong> You can reply directly to this email to respond to ${name}</p>
+              <p><strong>Quick Reply:</strong> You can reply directly to this email to respond to ${sanitizedData.name}</p>
               <p style="margin-top: 10px;">Received on ${new Date().toLocaleString('en-IN', { 
                 timeZone: 'Asia/Kolkata',
                 dateStyle: 'full',
@@ -187,9 +215,9 @@ export async function POST(request: NextRequest) {
     // Send email to admin via Brevo
     await sendBrevoEmail(
       adminEmail,
-      `New Contact Form Submission: ${subject}`,
+      `New Contact Form Submission: ${sanitizedData.subject}`,
       adminHtmlContent,
-      email
+      sanitizedData.email
     );
 
     // User confirmation email disabled - can be enabled later

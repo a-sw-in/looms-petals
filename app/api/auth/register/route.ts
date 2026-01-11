@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import bcrypt from "bcryptjs";
+import { loginRateLimit } from "@/lib/rateLimit";
+import { validate, registerSchema } from "@/lib/validation";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,15 +11,34 @@ const supabase = createClient(
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, password, name, otp } = await request.json();
-
-    // Validation
-    if (!email || !password || !name || !otp) {
+    // Rate limiting - 5 attempts per minute per IP
+    const rateLimit = loginRateLimit(request);
+    if (!rateLimit.allowed) {
+      const resetInSeconds = rateLimit.resetTime 
+        ? Math.ceil((rateLimit.resetTime - Date.now()) / 1000)
+        : 60;
+      
       return NextResponse.json(
-        { success: false, message: "All fields including OTP are required" },
+        { 
+          success: false, 
+          message: `Too many registration attempts. Please try again in ${resetInSeconds} seconds.` 
+        },
+        { status: 429 }
+      );
+    }
+
+    const body = await request.json();
+
+    // Input validation with Zod
+    const validation = validate(registerSchema, body);
+    if (!validation.success) {
+      return NextResponse.json(
+        { success: false, message: validation.error },
         { status: 400 }
       );
     }
+
+    const { email, password, name, otp } = validation.data;
 
     // Verify OTP first
     const { data: otpRecord } = await supabase
@@ -63,21 +84,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Validate email format
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      return NextResponse.json(
-        { success: false, message: "Invalid email format" },
-        { status: 400 }
-      );
-    }
-
-    // Validate password strength (minimum 8 characters, at least one letter and one number)
-    if (password.length < 8) {
-      return NextResponse.json(
-        { success: false, message: "Password must be at least 8 characters" },
-        { status: 400 }
-      );
+    // Email and password validation handled by Zod schema
     }
 
     // Check if user already exists

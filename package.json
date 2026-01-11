@@ -12,12 +12,14 @@
     "test:build": "npm run build && npm start"
   },
   "dependencies": {
-    "@sendinblue/client": "^3.3.1",
     "@supabase/supabase-js": "^2.80.0",
     "bcrypt": "^6.0.0",
     "bcryptjs": "^3.0.3",
     "bootstrap": "^5.3.8",
+    "dompurify": "^3.3.1",
     "dotenv": "^17.2.3",
+    "helmet": "^8.1.0",
+    "isomorphic-dompurify": "^2.35.0",
     "jspdf": "^4.0.0",
     "jspdf-autotable": "^5.0.7",
     "mongoose": "^8.19.3",
@@ -28,11 +30,12 @@
     "react-bootstrap": "^2.10.10",
     "react-dom": "^19.2.3",
     "resend": "^6.4.2",
-    "sib-api-v3-sdk": "^8.5.0"
+    "zod": "^4.3.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
+    "@types/dompurify": "^3.0.5",
     "@types/node": "^20",
     "@types/nodemailer": "^7.0.5",
     "@types/react": "^19",
