@@ -7,6 +7,43 @@ import { NextRequest } from 'next/server';
 // Store recent order attempts to prevent duplicates
 const recentOrders = new Map<string, number>();
 
+// Helper function to log failed order attempts
+async function logFailedOrder(
+    formData: any,
+    items: any[],
+    submittedTotal: number,
+    calculatedTotal: number | null,
+    paymentDetails: any,
+    failureReason: string,
+    failureMessage: string,
+    userId?: string
+) {
+    try {
+        await supabaseAdmin?.from('failed_orders').insert([{
+            customer_name: formData.fullName,
+            customer_email: formData.email,
+            customer_phone: formData.phone,
+            shipping_address: formData.address,
+            city: formData.city,
+            state: formData.state,
+            pincode: formData.pinCode,
+            country: formData.country,
+            items: items,
+            submitted_total: submittedTotal,
+            calculated_total: calculatedTotal,
+            razorpay_order_id: paymentDetails?.razorpay_order_id || null,
+            razorpay_payment_id: paymentDetails?.razorpay_payment_id || null,
+            razorpay_signature: paymentDetails?.razorpay_signature || null,
+            failure_reason: failureReason,
+            failure_message: failureMessage,
+            user_id: userId || null
+        }]);
+        console.log('✅ Failed order logged for review:', formData.email);
+    } catch (error) {
+        console.error('❌ Failed to log failed order:', error);
+    }
+}
+
 export async function POST(request: NextRequest) {
     try {
         // 1. Rate Limiting - 1 order per minute per IP
@@ -65,7 +102,7 @@ export async function POST(request: NextRequest) {
             // Fetch actual price from database
             const { data: product, error: productError } = await supabaseAdmin
                 .from('products')
-                .select('price, stock, name')
+                .select('discount_price, stock, name')
                 .eq('id', item.id)
                 .single();
             
@@ -76,13 +113,13 @@ export async function POST(request: NextRequest) {
                 );
             }
             
-            // Use database price, NOT frontend price
-            const itemTotal = product.price * item.quantity;
+            // Use database discount price, NOT frontend price
+            const itemTotal = product.discount_price * item.quantity;
             calculatedTotal += itemTotal;
             
             validatedItems.push({
                 ...item,
-                price: product.price, // Enforce server-side price
+                price: product.discount_price, // Enforce server-side discount price
                 name: product.name,
             });
         }
@@ -95,6 +132,20 @@ export async function POST(request: NextRequest) {
                 calculated: calculatedTotal,
                 difference: priceDifference
             });
+            
+            // Log failed order if online payment was attempted
+            if (formData.paymentMethod === 'online' && paymentDetails) {
+                await logFailedOrder(
+                    formData,
+                    validatedItems,
+                    total,
+                    calculatedTotal,
+                    paymentDetails,
+                    'price_verification',
+                    `Price mismatch: submitted ₹${total}, calculated ₹${calculatedTotal}`,
+                    userId
+                );
+            }
             
             return NextResponse.json(
                 { success: false, message: 'Price verification failed. Please refresh and try again.' },
@@ -124,6 +175,18 @@ export async function POST(request: NextRequest) {
                     order_id: paymentDetails.razorpay_order_id,
                     payment_id: paymentDetails.razorpay_payment_id
                 });
+                
+                // Log failed order - signature verification failed
+                await logFailedOrder(
+                    formData,
+                    validatedItems,
+                    total,
+                    calculatedTotal,
+                    paymentDetails,
+                    'signature_verification',
+                    'Razorpay signature verification failed',
+                    userId
+                );
                 
                 return NextResponse.json(
                     { success: false, message: 'Payment verification failed: Invalid signature' },
@@ -164,6 +227,19 @@ export async function POST(request: NextRequest) {
                     // Verify payment status
                     if (paymentData.status !== 'captured' && paymentData.status !== 'authorized') {
                         console.error('❌ Payment status not valid:', paymentData.status);
+                        
+                        // Log failed order - invalid payment status
+                        await logFailedOrder(
+                            formData,
+                            validatedItems,
+                            total,
+                            calculatedTotal,
+                            { ...paymentDetails, payment_amount: paymentData.amount },
+                            'payment_status_invalid',
+                            `Payment status is ${paymentData.status}, expected captured or authorized`,
+                            userId
+                        );
+                        
                         return NextResponse.json(
                             { success: false, message: 'Payment not completed. Status: ' + paymentData.status },
                             { status: 400 }
@@ -183,6 +259,18 @@ export async function POST(request: NextRequest) {
                             expected: expectedAmount,
                             received: paymentData.amount
                         });
+                        
+                        // Log failed order - amount mismatch
+                        await logFailedOrder(
+                            formData,
+                            validatedItems,
+                            total,
+                            calculatedTotal,
+                            { ...paymentDetails, payment_amount: paymentData.amount },
+                            'amount_mismatch',
+                            `Amount mismatch: expected ₹${expectedAmount/100}, received ₹${paymentData.amount/100}`,
+                            userId
+                        );
                         
                         return NextResponse.json(
                             { success: false, message: 'Payment amount verification failed' },

@@ -65,6 +65,11 @@ export default function AdminDashboard() {
   const [adminNotesInput, setAdminNotesInput] = useState('');
   const [orderSearchId, setOrderSearchId] = useState('');
   const [refundSearchId, setRefundSearchId] = useState('');
+  const [failedOrders, setFailedOrders] = useState([]);
+  const [failedOrdersLoading, setFailedOrdersLoading] = useState(false);
+  const [selectedFailedOrder, setSelectedFailedOrder] = useState(null);
+  const [showFailedOrderModal, setShowFailedOrderModal] = useState(false);
+
 
   useEffect(() => {
     checkAuth();
@@ -177,6 +182,39 @@ export default function AdminDashboard() {
       console.error('Failed to fetch refunds:', error);
     } finally {
       setRefundsLoading(false);
+    }
+  };
+
+  const fetchFailedOrders = async () => {
+    try {
+      setFailedOrdersLoading(true);
+      const response = await fetch('/api/admin/failed-orders');
+      const result = await response.json();
+      if (result.success) {
+        setFailedOrders(result.data);
+      }
+    } catch (error) {
+      console.error('Error fetching failed orders:', error);
+    } finally {
+      setFailedOrdersLoading(false);
+    }
+  };
+
+  const markFailedOrderResolved = async (id, resolved, notes) => {
+    try {
+      const response = await fetch('/api/admin/failed-orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, resolved, admin_notes: notes })
+      });
+      const result = await response.json();
+      if (result.success) {
+        await fetchFailedOrders();
+        setShowFailedOrderModal(false);
+        setSelectedFailedOrder(null);
+      }
+    } catch (error) {
+      console.error('Error updating failed order:', error);
     }
   };
 
@@ -637,6 +675,15 @@ export default function AdminDashboard() {
             className={`${styles.tabBtn} ${activeTab === 'payments' ? styles.tabActive : ''}`}
           >
             Payments
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('failed-orders');
+              if (failedOrders.length === 0) fetchFailedOrders();
+            }}
+            className={`${styles.tabBtn} ${activeTab === 'failed-orders' ? styles.tabActive : ''}`}
+          >
+            Failed Orders ({failedOrders.length})
           </button>
         </div>
 
@@ -1427,6 +1474,124 @@ export default function AdminDashboard() {
                         </td>
                       </tr>
                     ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )
+        }
+
+        {/* Failed Orders Tab */}
+        {
+          activeTab === 'failed-orders' && (
+            <>
+              <div className={styles.toolbar}>
+                <h2 className={styles.pageTitle}>Failed Order Attempts</h2>
+                <div className={styles.toolbarActions}>
+                  <button
+                    onClick={fetchFailedOrders}
+                    className={styles.addBtn}
+                    style={{ background: '#17a2b8' }}
+                  >
+                    🔄 Refresh
+                  </button>
+                </div>
+              </div>
+
+              <div className={styles.tableContainer}>
+                <table className={styles.baseTable}>
+                  <thead>
+                    <tr>
+                      <th>Email</th>
+                      <th>Date</th>
+                      <th>Amount</th>
+                      <th>Failure Reason</th>
+                      <th>Status</th>
+                      <th style={{ width: '120px' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {failedOrdersLoading ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>Loading failed orders...</td></tr>
+                    ) : failedOrders.length === 0 ? (
+                      <tr><td colSpan="6" style={{ textAlign: 'center', padding: '20px' }}>No failed orders found.</td></tr>
+                    ) : (
+                      failedOrders.map((failedOrder) => (
+                        <tr key={failedOrder.id}>
+                          <td>
+                            <div style={{ fontWeight: '500' }}>{failedOrder.customer_email}</div>
+                            <div style={{ fontSize: '12px', color: '#666' }}>{failedOrder.customer_phone}</div>
+                          </td>
+                          <td>{new Date(failedOrder.created_at).toLocaleString()}</td>
+                          <td style={{ fontWeight: '600' }}>₹{Number(failedOrder.submitted_total || 0).toLocaleString()}</td>
+                          <td>
+                            <span style={{
+                              padding: '4px 8px',
+                              borderRadius: '12px',
+                              fontSize: '11px',
+                              fontWeight: '600',
+                              textTransform: 'uppercase',
+                              background: 
+                                failedOrder.failure_reason === 'price_verification' ? '#fff3cd' :
+                                failedOrder.failure_reason === 'signature_verification' ? '#f8d7da' :
+                                failedOrder.failure_reason === 'amount_mismatch' ? '#ffe5cc' :
+                                failedOrder.failure_reason === 'payment_status_invalid' ? '#e2e3e5' : '#f8f9fa',
+                              color:
+                                failedOrder.failure_reason === 'price_verification' ? '#856404' :
+                                failedOrder.failure_reason === 'signature_verification' ? '#721c24' :
+                                failedOrder.failure_reason === 'amount_mismatch' ? '#cc5200' :
+                                failedOrder.failure_reason === 'payment_status_invalid' ? '#383d41' : '#495057'
+                            }}>
+                              {failedOrder.failure_reason?.replace(/_/g, ' ')}
+                            </span>
+                          </td>
+                          <td>
+                            {failedOrder.resolved ? (
+                              <span style={{
+                                padding: '4px 12px',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                background: '#d4edda',
+                                color: '#155724'
+                              }}>
+                                RESOLVED
+                              </span>
+                            ) : (
+                              <span style={{
+                                padding: '4px 12px',
+                                borderRadius: '12px',
+                                fontSize: '12px',
+                                fontWeight: '600',
+                                background: '#fff3cd',
+                                color: '#856404'
+                              }}>
+                                PENDING
+                              </span>
+                            )}
+                          </td>
+                          <td>
+                            <button
+                              onClick={() => {
+                                setSelectedFailedOrder(failedOrder);
+                                setShowFailedOrderModal(true);
+                              }}
+                              style={{ 
+                                padding: '6px 12px', 
+                                background: '#007bff', 
+                                color: 'white', 
+                                border: 'none', 
+                                borderRadius: '4px', 
+                                cursor: 'pointer',
+                                width: '100%'
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -2669,6 +2834,201 @@ export default function AdminDashboard() {
                   Submit
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Failed Order Details Modal */}
+      {showFailedOrderModal && selectedFailedOrder && (
+        <div className={styles.modalOverlay} onClick={() => setShowFailedOrderModal(false)}>
+          <div className={styles.modalContent} onClick={(e) => e.stopPropagation()} style={{ maxWidth: '700px', maxHeight: '90vh', overflow: 'auto' }}>
+            <div className={styles.modalHeader}>
+              <h2>Failed Order Details</h2>
+              <button onClick={() => setShowFailedOrderModal(false)} className={styles.closeBtn}>&times;</button>
+            </div>
+
+            <div style={{ padding: '20px' }}>
+              {/* Status Badge */}
+              <div style={{ marginBottom: '20px', textAlign: 'center' }}>
+                {selectedFailedOrder.resolved ? (
+                  <span style={{
+                    padding: '8px 20px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    background: '#d4edda',
+                    color: '#155724',
+                    display: 'inline-block'
+                  }}>
+                    ✓ RESOLVED
+                  </span>
+                ) : (
+                  <span style={{
+                    padding: '8px 20px',
+                    borderRadius: '20px',
+                    fontSize: '14px',
+                    fontWeight: '600',
+                    background: '#fff3cd',
+                    color: '#856404',
+                    display: 'inline-block'
+                  }}>
+                    ⚠ PENDING REVIEW
+                  </span>
+                )}
+              </div>
+
+              {/* Failure Information */}
+              <div style={{ marginBottom: '20px', padding: '15px', background: '#f8d7da', borderRadius: '8px', border: '1px solid #f5c6cb' }}>
+                <h3 style={{ margin: '0 0 8px 0', color: '#721c24', fontSize: '14px', fontWeight: '600' }}>Failure Reason</h3>
+                <div style={{ fontSize: '14px', color: '#721c24', fontWeight: '500' }}>
+                  {selectedFailedOrder.failure_reason?.replace(/_/g, ' ').toUpperCase()}
+                </div>
+                <div style={{ fontSize: '13px', color: '#721c24', marginTop: '4px' }}>
+                  {selectedFailedOrder.failure_message}
+                </div>
+              </div>
+
+              {/* Customer Information */}
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #dee2e6', paddingBottom: '8px' }}>Customer Information</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                  <div>
+                    <strong>Name:</strong> {selectedFailedOrder.customer_name}
+                  </div>
+                  <div>
+                    <strong>Phone:</strong> {selectedFailedOrder.customer_phone}
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <strong>Email:</strong> {selectedFailedOrder.customer_email}
+                  </div>
+                </div>
+              </div>
+
+              {/* Shipping Address */}
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #dee2e6', paddingBottom: '8px' }}>Shipping Address</h3>
+                <div>
+                  <div>{selectedFailedOrder.shipping_address}</div>
+                  <div>{selectedFailedOrder.city}, {selectedFailedOrder.state} - {selectedFailedOrder.pincode}</div>
+                  <div>{selectedFailedOrder.country}</div>
+                </div>
+              </div>
+
+              {/* Order Details */}
+              <div style={{ marginBottom: '20px' }}>
+                <h3 style={{ fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #dee2e6', paddingBottom: '8px' }}>Order Details</h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '12px' }}>
+                  <div>
+                    <strong>Submitted Total:</strong> <span style={{ color: '#dc3545', fontWeight: '600' }}>₹{Number(selectedFailedOrder.submitted_total || 0).toLocaleString()}</span>
+                  </div>
+                  {selectedFailedOrder.calculated_total && (
+                    <div>
+                      <strong>Calculated Total:</strong> <span style={{ color: '#28a745', fontWeight: '600' }}>₹{Number(selectedFailedOrder.calculated_total || 0).toLocaleString()}</span>
+                    </div>
+                  )}
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <strong>Attempt Date:</strong> {new Date(selectedFailedOrder.created_at).toLocaleString()}
+                  </div>
+                </div>
+
+                {/* Products */}
+                <div style={{ marginTop: '12px' }}>
+                  <strong>Products:</strong>
+                  <div style={{ marginTop: '8px', maxHeight: '200px', overflow: 'auto' }}>
+                    {selectedFailedOrder.items && Array.isArray(selectedFailedOrder.items) ? (
+                      selectedFailedOrder.items.map((item, index) => (
+                        <div key={index} style={{ 
+                          padding: '8px',
+                          background: '#f8f9fa',
+                          borderRadius: '4px',
+                          marginBottom: '6px',
+                          display: 'flex',
+                          justifyContent: 'space-between',
+                          fontSize: '13px'
+                        }}>
+                          <span>{item.name} (x{item.quantity})</span>
+                          <span style={{ fontWeight: '600' }}>₹{(item.price * item.quantity).toLocaleString()}</span>
+                        </div>
+                      ))
+                    ) : (
+                      <div style={{ fontSize: '13px', color: '#666' }}>No items available</div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              {selectedFailedOrder.razorpay_payment_id && (
+                <div style={{ marginBottom: '20px' }}>
+                  <h3 style={{ fontSize: '16px', marginBottom: '12px', borderBottom: '2px solid #dee2e6', paddingBottom: '8px' }}>Payment Information</h3>
+                  <div style={{ fontSize: '13px' }}>
+                    <div style={{ marginBottom: '6px' }}>
+                      <strong>Payment ID:</strong> <code style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '3px' }}>{selectedFailedOrder.razorpay_payment_id}</code>
+                    </div>
+                    {selectedFailedOrder.razorpay_order_id && (
+                      <div style={{ marginBottom: '6px' }}>
+                        <strong>Order ID:</strong> <code style={{ background: '#f8f9fa', padding: '2px 6px', borderRadius: '3px' }}>{selectedFailedOrder.razorpay_order_id}</code>
+                      </div>
+                    )}
+                    {selectedFailedOrder.payment_amount && (
+                      <div>
+                        <strong>Payment Amount:</strong> ₹{(selectedFailedOrder.payment_amount / 100).toLocaleString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Admin Notes */}
+              {selectedFailedOrder.admin_notes && (
+                <div style={{ marginBottom: '20px', padding: '15px', background: '#d1ecf1', borderRadius: '8px', border: '1px solid #bee5eb' }}>
+                  <h3 style={{ margin: '0 0 8px 0', color: '#0c5460', fontSize: '14px', fontWeight: '600' }}>Admin Notes</h3>
+                  <div style={{ fontSize: '13px', color: '#0c5460' }}>
+                    {selectedFailedOrder.admin_notes}
+                  </div>
+                </div>
+              )}
+
+              {/* Action Buttons */}
+              {!selectedFailedOrder.resolved && (
+                <div style={{ marginTop: '20px', display: 'flex', gap: '12px' }}>
+                  <button
+                    onClick={() => {
+                      const notes = prompt('Add admin notes (optional):');
+                      markFailedOrderResolved(selectedFailedOrder.id, true, notes || '');
+                    }}
+                    style={{
+                      flex: 1,
+                      padding: '12px',
+                      background: '#28a745',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontWeight: '600',
+                      fontSize: '14px'
+                    }}
+                  >
+                    Mark as Resolved
+                  </button>
+                </div>
+              )}
+
+              {selectedFailedOrder.resolved && selectedFailedOrder.resolved_at && (
+                <div style={{ marginTop: '12px', fontSize: '12px', color: '#666', textAlign: 'center' }}>
+                  Resolved on: {new Date(selectedFailedOrder.resolved_at).toLocaleString()}
+                </div>
+              )}
+
+              {/* Close Button */}
+              <button
+                onClick={() => setShowFailedOrderModal(false)}
+                className={styles.secondaryBtn}
+                style={{ width: '100%', marginTop: '20px' }}
+              >
+                Close
+              </button>
             </div>
           </div>
         </div>
