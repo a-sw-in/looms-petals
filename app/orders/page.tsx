@@ -211,6 +211,7 @@ export default function MyOrders() {
             if (data.success) {
                 alert(isCancellation ? 'Order cancelled and refund request submitted successfully!' : 'Refund request submitted successfully! We will contact you soon.');
                 setShowRefundModal(false);
+                setSelectedOrder(null);
                 setIsCancellation(false);
                 setRefundData({ 
                     reason: '', 
