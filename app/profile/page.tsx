@@ -4,11 +4,12 @@ import { useState, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useRouter } from "next/navigation";
 import styles from "./profile.module.css";
+import Loader from "../components/Loader";
 
 export default function ProfilePage() {
   const { user, updateProfile, deleteAccount, isLoading } = useAuth();
   const router = useRouter();
-  const [name, setName] = useState("");
+  const [name, setName] = useState(""); 
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [age, setAge] = useState<number | "">("");
@@ -87,8 +88,8 @@ export default function ProfilePage() {
 
   if (isLoading) {
     return (
-      <div className={styles.container}>
-        <div className={styles.loading}>Loading...</div>
+      <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+        <Loader />
       </div>
     );
   }

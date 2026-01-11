@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import styles from "./CardSection.module.css";
+import Loader from "./Loader";
 
 type Product = {
 	id: number;
@@ -47,20 +48,8 @@ export default function CardSection() {
 	if (loading) {
 		return (
 			<section className={styles.wrapper}>
-				<h2 className={styles.heading}>OUR COLLECTION</h2>
-				<div className={styles.grid}>
-					{[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-						<div key={i} className={styles.productCard}>
-							<div className={styles.imageWrapper} style={{ background: '#f0f0f0' }}>
-								<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-									Loading...
-								</div>
-							</div>
-							<div className={styles.details}>
-								<h3 className={styles.productName}>•••</h3>
-							</div>
-						</div>
-					))}
+				<div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+					<Loader />
 				</div>
 			</section>
 		);

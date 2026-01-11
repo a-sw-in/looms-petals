@@ -2,6 +2,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import styles from './ScrollTrend.module.css';
+import Loader from './Loader';
 
 interface BrandCard {
   brand: string;
@@ -111,15 +112,8 @@ const ScrollTrendJewel = () => {
   if (loading) {
     return (
       <div className={styles.container}>
-        <h2 className={styles.sectionTitle}>LATEST JEWELS</h2>
-        <div className={styles.carousel}>
-          {[1, 2, 3, 4].map((i) => (
-            <div key={i} className={styles.card}>
-              <div className={styles.innerPanel} style={{ background: '#f0f0f0' }}>
-                <div style={{ height: '100%' }} />
-              </div>
-            </div>
-          ))}
+        <div style={{ display: 'flex', justifyContent: 'center', padding: '4rem 0' }}>
+          <Loader />
         </div>
       </div>
     );

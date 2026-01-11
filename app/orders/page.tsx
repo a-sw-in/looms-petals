@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '../context/AuthContext';
 import { Navbar } from '../components/Navbar';
 import Footer from '../components/Footer';
+import Loader from '../components/Loader';
 
 export default function MyOrders() {
     const { user, isLoading: authLoading } = useAuth();
@@ -238,19 +239,15 @@ export default function MyOrders() {
 
     if (authLoading || (loading && user)) {
         return (
-            <div className="home w-screen flex flex-col min-h-screen">
-                <Navbar />
-                <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
-                    <div className="loader" style={{ width: '40px', height: '40px', border: '4px solid #f3f3f3', borderTop: '4px solid #7a2d2d', borderRadius: '50%', animation: 'spin 1s linear infinite' }}></div>
-                    <style jsx>{`
-            @keyframes spin {
-              0% { transform: rotate(0deg); }
-              100% { transform: rotate(360deg); }
-            }
-          `}</style>
+            <>
+                <div className="home w-screen flex flex-col min-h-screen">
+                    <Navbar />
+                    <div style={{ flex: 1, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
+                        <Loader />
+                    </div>
                 </div>
                 <Footer />
-            </div>
+            </>
         );
     }
 

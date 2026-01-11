@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from "react";
 import { useRouter, usePathname } from "next/navigation";
+import Loader from "../components/Loader";
 
 type User = {
   id: number;
@@ -227,26 +228,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           <div style={{
             textAlign: 'center',
             padding: '40px',
-            background: 'white',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(122, 45, 45, 0.15)'
           }}>
-            <div style={{
-              width: '48px',
-              height: '48px',
-              border: '4px solid #f3f3f3',
-              borderTop: '4px solid #7a2d2d',
-              borderRadius: '50%',
-              animation: 'spin 1s linear infinite',
-              margin: '0 auto 16px'
-            }} />
-            <p style={{ color: '#666', fontSize: '14px', margin: 0 }}>Loading...</p>
-            <style>{`
-              @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-              }
-            `}</style>
+            <div style={{ margin: '0 auto 16px' }}>
+              <Loader />
+            </div>
+            <p style={{ color: '#666', fontSize: '14px', margin: 0 }}></p>
           </div>
         </div>
       ) : (

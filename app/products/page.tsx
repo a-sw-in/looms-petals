@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import styles from "./products.module.css";
 import { Navbar } from "../components/Navbar";
 import Footer from "../components/Footer";
+import Loader from "../components/Loader";
 
 type Product = {
 	id: number;
@@ -48,26 +49,9 @@ export default function ProductsPage() {
 
 	if (loading) {
 		return (
-			<main className={styles.container}>
-				<div className={styles.header}>
-					<h1 className={styles.title}>All Products</h1>
-					<p className={styles.subtitle}>Loading products...</p>
-				</div>
-				<div className={styles.grid}>
-					{[...Array(12)].map((_, i) => (
-						<div key={i} className={styles.productCard}>
-							<div className={styles.imageWrapper} style={{ background: '#f0f0f0' }}>
-								<div style={{ height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#999' }}>
-									Loading...
-								</div>
-							</div>
-							<div className={styles.details}>
-								<h3 className={styles.productName}>•••</h3>
-							</div>
-						</div>
-					))}
-				</div>
-			</main>
+			<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+				<Loader />
+			</div>
 		);
 	}
 

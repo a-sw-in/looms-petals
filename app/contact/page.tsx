@@ -4,6 +4,7 @@ import { useState } from 'react';
 import styles from './contact.module.css';
 import { Navbar } from '../components/Navbar';
 import Footer from '../components/Footer';
+import Loader from '../components/Loader';
 
 export default function ContactPage() {
   const [formData, setFormData] = useState({
@@ -224,9 +225,9 @@ export default function ContactPage() {
             <button type="submit" className={styles.submitButton} disabled={loading}>
               {loading ? (
                 <>
-                  <svg className={styles.spinner} width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M21 12a9 9 0 1 1-6.219-8.56"/>
-                  </svg>
+                  <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Loader />
+                  </div>
                   Sending...
                 </>
               ) : (

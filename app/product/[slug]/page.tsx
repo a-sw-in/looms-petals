@@ -8,6 +8,7 @@ import { useCart } from "../../context/CartContext";
 import styles from "./ProductPage.module.css";
 import { Navbar } from "../../components/Navbar";
 import Footer from "../../components/Footer";
+import Loader from "../../components/Loader";
 
 type Product = {
 	id: number;
@@ -31,8 +32,8 @@ type Product = {
 
 // Skeleton loader component
 const ProductSkeleton = () => (
-	<div className={styles.loadingContainer}>
-		<div className={styles.loader}></div>
+	<div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
+		<Loader />
 	</div>
 );
 
