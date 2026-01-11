@@ -84,9 +84,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Email and password validation handled by Zod schema
-    }
-
     // Check if user already exists
     const { data: existingUser } = await supabase
       .from("users")
