@@ -32,8 +32,8 @@ const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
     router.push(`/product/${slug}`);
   };
 
-  const displayPrice = product.price;
-  const originalPrice = product.discount_price ?? null;
+  const displayPrice = product.discount_price ?? product.price;
+  const originalPrice = product.discount_price ? product.price : null;
   
   // Get image URL - image_url is ALSO a JSON string!
   let imageUrl = '';

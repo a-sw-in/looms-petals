@@ -724,12 +724,12 @@ export default function AdminDashboard() {
                         </span>
                       </div>
                       <div className={styles.cardPrice}>
-                        <span className={styles.price}>₹{product.price}</span>
                         {product.discount_price && (
-                          <span className={styles.discountPrice}>
+                          <span className={styles.price}>
                             ₹{product.discount_price}
                           </span>
                         )}
+                        <span className={styles.discountPrice}>₹{product.price}</span>
                       </div>
                       <p className={styles.cardStock}>Stock: {product.stock}</p>
                       <div className={styles.cardActions}>
@@ -1716,8 +1716,8 @@ export default function AdminDashboard() {
                           {item.selectedColor && <div style={{ fontSize: '12px', color: '#666' }}>Color: <span style={{ display: 'inline-block', width: '10px', height: '10px', background: item.selectedColor, borderRadius: '50%', verticalAlign: 'middle', marginLeft: '4px' }}></span></div>}
                         </td>
                         <td style={{ padding: '12px', textAlign: 'center' }}>{item.quantity}</td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{item.price || item.discount_price}</td>
-                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{(item.price || item.discount_price) * item.quantity}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{item.price}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>₹{item.price * item.quantity}</td>
                       </tr>
                     ))}
                   </tbody>

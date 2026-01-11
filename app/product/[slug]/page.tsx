@@ -112,7 +112,7 @@ export default function ProductPage() {
 
 	const discount = useMemo(() => {
 		if (!product?.discount_price) return 0;
-		return Math.round(((product.discount_price - product.price) / product.discount_price) * 100);
+		return Math.round(((product.price - product.discount_price) / product.price) * 100);
 	}, [product]);
 
 	const handleQuantityChange = useCallback((delta: number) => {
@@ -324,7 +324,7 @@ export default function ProductPage() {
 			"@type": "Offer",
 			url: typeof window !== "undefined" ? window.location.href : "",
 			priceCurrency: "INR",
-				price: product.price,
+				price: product.discount_price || product.price,
 			availability:
 				product.stock > 0
 					? "https://schema.org/InStock"
@@ -509,11 +509,11 @@ export default function ProductPage() {
 							<div className={styles.priceSection}>
 								<div className={styles.priceRow}>
 									<span className={styles.currentPrice}>
-									₹{product.price}
+									₹{product.discount_price || product.price}
 								</span>
 								{product.discount_price && (
 									<>
-										<span className={styles.originalPrice}>₹{product.discount_price}</span>
+										<span className={styles.originalPrice}>₹{product.price}</span>
 											<span className={styles.discountBadge}>{discount}% OFF</span>
 										</>
 									)}

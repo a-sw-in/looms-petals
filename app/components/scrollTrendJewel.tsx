@@ -43,7 +43,7 @@ const ScrollTrendJewel = () => {
           
           jewelryProducts.forEach((product: any) => {
             if (product.brand) {
-              const price = product.price;
+              const price = product.discount_price || product.price;
               const existing = brandMap.get(product.brand);
               
               // Parse image_url to get the first image if it's an array
