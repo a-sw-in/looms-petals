@@ -26,7 +26,7 @@ const ScrollTrendJewel = () => {
 
         if (data.success) {
           console.log('All products:', data.data); // Debug log
-          
+
           // Filter jewelry products only
           const jewelryProducts = data.data.filter(
             (product: any) => {
@@ -40,12 +40,12 @@ const ScrollTrendJewel = () => {
 
           // Group by brand and get minimum price and image for each
           const brandMap = new Map<string, { minPrice: number; image: string; count: number }>();
-          
+
           jewelryProducts.forEach((product: any) => {
             if (product.brand) {
               const price = product.discount_price || product.price;
               const existing = brandMap.get(product.brand);
-              
+
               // Parse image_url to get the first image if it's an array
               let imageUrl = `https://picsum.photos/seed/${product.brand}/800/600`;
               if (product.image_url) {
@@ -58,9 +58,9 @@ const ScrollTrendJewel = () => {
                   imageUrl = product.image_url || imageUrl;
                 }
               }
-              
+
               console.log('Brand:', product.brand, 'Image:', imageUrl); // Debug log
-              
+
               if (!existing || price < existing.minPrice) {
                 brandMap.set(product.brand, {
                   minPrice: price,
@@ -127,7 +127,7 @@ const ScrollTrendJewel = () => {
     <div className={styles.container}>
       <div className={styles.header}>
         <h2 className={styles.sectionTitle}>LATEST JEWELS</h2>
-        <button 
+        <button
           className={styles.viewAllBtn}
           onClick={() => router.push('/brands/jewelry')}
         >
@@ -136,8 +136,8 @@ const ScrollTrendJewel = () => {
       </div>
       <div className={styles.carousel} ref={trackRef}>
         {brandCards.map((card, index) => (
-          <div 
-            key={index} 
+          <div
+            key={index}
             className={styles.card}
             onClick={() => router.push(`/brands/${encodeURIComponent(card.brand.toLowerCase().replace(/\s+/g, '-'))}`)}
             style={{ cursor: 'pointer' }}
@@ -155,14 +155,14 @@ const ScrollTrendJewel = () => {
                 </div>
                 <span className={styles.productCount}>{card.productCount} Products</span>
               </div>
-              
+
               <div className={styles.imageContainer}>
-                <img 
-                  src={card.image} 
+                <img
+                  src={card.image}
                   alt={`${card.brand} Product`}
-                  style={{ 
-                    width: '100%', 
-                    height: '100%', 
+                  style={{
+                    width: '100%',
+                    height: '100%',
                     objectFit: 'cover',
                     position: 'absolute',
                     top: 0,

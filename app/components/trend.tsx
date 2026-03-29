@@ -44,8 +44,8 @@ export default function Trend() {
 
 	if (loading) {
 		return (
-			<section className={styles.wrapper} aria-label="Early Winter Drops">
-				<h2 className={styles.sectionTitle}>EARLY WINTER DROPS</h2>
+			<section className={styles.wrapper} aria-label="Performance Arrivals">
+				<h2 className={styles.sectionTitle}>PERFORMANCE ARRIVALS</h2>
 				<div className={styles.container}>
 					{[1, 2, 3, 4].map((i) => (
 						<article key={i} className={styles.card}>
@@ -64,15 +64,15 @@ export default function Trend() {
 	}
 
 	return (
-		<section className={styles.wrapper} aria-label="Early Winter Drops">
-			<h2 className={styles.sectionTitle}>EARLY WINTER DROPS</h2>
+		<section className={styles.wrapper} aria-label="Performance Arrivals">
+			<h2 className={styles.sectionTitle}>PERFORMANCE ARRIVALS</h2>
 			<div className={styles.container}>
 				{newArrivals.map((product, idx) => {
 					const slug = product.name
 						.toLowerCase()
 						.replace(/[^a-z0-9]+/g, "-")
 						.replace(/^-+|-+$/g, "");
-					
+
 					// Parse image_url to get the first image if it's an array
 					let imageUrl = `https://picsum.photos/seed/${product.id}/800/1000`;
 					if (product.image_url) {
@@ -85,7 +85,7 @@ export default function Trend() {
 							imageUrl = product.image_url || imageUrl;
 						}
 					}
-					
+
 					return (
 						<article
 							key={product.id}

@@ -324,7 +324,7 @@ export default function ProductPage() {
 			"@type": "Offer",
 			url: typeof window !== "undefined" ? window.location.href : "",
 			priceCurrency: "INR",
-				price: product.discount_price || product.price,
+			price: product.discount_price || product.price,
 			availability:
 				product.stock > 0
 					? "https://schema.org/InStock"
@@ -509,11 +509,11 @@ export default function ProductPage() {
 							<div className={styles.priceSection}>
 								<div className={styles.priceRow}>
 									<span className={styles.currentPrice}>
-									₹{product.discount_price || product.price}
-								</span>
-								{product.discount_price && (
-									<>
-										<span className={styles.originalPrice}>₹{product.price}</span>
+										₹{product.discount_price || product.price}
+									</span>
+									{product.discount_price && (
+										<>
+											<span className={styles.originalPrice}>₹{product.price}</span>
 											<span className={styles.discountBadge}>{discount}% OFF</span>
 										</>
 									)}
@@ -633,31 +633,6 @@ export default function ProductPage() {
 								>
 									Buy Now
 								</button>
-							</div>
-
-							{/* Additional Info */}
-							<div className={styles.infoCards}>
-								<div className={styles.infoCard}>
-									<span className={styles.infoIcon}>🚚</span>
-									<div>
-										<h4>Free Delivery</h4>
-										<p>On orders above ₹999</p>
-									</div>
-								</div>
-								<div className={styles.infoCard}>
-									<span className={styles.infoIcon}>↩️</span>
-									<div>
-										<h4>Easy Returns</h4>
-										<p>7 days return policy</p>
-									</div>
-								</div>
-								<div className={styles.infoCard}>
-									<span className={styles.infoIcon}>✓</span>
-									<div>
-										<h4>Authentic Product</h4>
-										<p>100% original</p>
-									</div>
-								</div>
 							</div>
 						</div>
 					</div>

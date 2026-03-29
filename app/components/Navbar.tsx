@@ -97,6 +97,11 @@ const Icon = {
       <line x1="3" y1="12" x2="21" y2="12" /><line x1="3" y1="6" x2="21" y2="6" /><line x1="3" y1="18" x2="21" y2="18" />
     </svg>
   ),
+  Zap: () => (
+    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
   Close: () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
       <line x1="18" y1="6" x2="6" y2="18" /><line x1="6" y1="6" x2="18" y2="18" />
@@ -113,13 +118,12 @@ export function Navbar() {
   const { user, logout } = useAuth();
 
   const menu = [
-    { key: 'Jewellery', icon: <Icon.Diamond />, label: 'Jewellery', href: '/collections/jewellery' },
-    { key: 'Clothing', icon: <Icon.Store />, label: 'Clothing', href: '/collections/clothing' },
-    { key: 'Saree', icon: <Icon.Store />, label: 'Saree', href: '/collections/saree' },
-    { key: 'Lehengas', icon: <Icon.Store />, label: 'Lehengas', href: '/collections/lehengas' },
-    { key: 'Men', icon: <Icon.User />, label: 'Men', href: '/collections/men' },
-    { key: 'Women', icon: <Icon.User />, label: 'Women', href: '/collections/women' },
-    { key: 'Footwear', icon: <Icon.Brand />, label: 'Footwear', href: '/collections/footwear' },
+    { key: 'toys', label: 'Toys', href: '/collections/toys' },
+    { key: 'accessories', label: 'Accessories', href: '/collections/accessories' },
+    { key: 'gadgets', label: 'Gadgets', href: '/collections/gadgets' },
+    { key: 'devices', label: 'Devices', href: '/collections/devices' },
+    { key: 'products', label: 'Products', href: '/collections/products' },
+    { key: 'other', label: 'Others', href: '/collections/other' },
   ];
 
   const handleMenuClick = (href: string) => {
@@ -142,7 +146,7 @@ export function Navbar() {
 
         <div className="tnq-brand">
           <Link href="/" className="tnq-brand-link">
-            <span className="tnq-brand-text">LOOMS & PETALS</span>
+            <span className="tnq-brand-text">GOMORA</span>
           </Link>
         </div>
         <div className="tnq-row justify-center tnq-row-menu tnq-desktop-menu">
@@ -152,7 +156,7 @@ export function Navbar() {
               onClick={() => handleMenuClick(m.href)}
               className={`tnq-menu-item ${pathname === m.href ? 'active' : ''}`}
             >
-              <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
+              <span className="tnq-menu-icon" aria-hidden>{/*{m.icon}*/}</span>
               <span className="tnq-menu-label">{m.label}</span>
             </button>
           ))}
@@ -210,7 +214,7 @@ export function Navbar() {
                     }}
                     className="tnq-account-menu-item tnq-logout"
                   >
-                    <span>🚪</span>
+                    <span></span>
                     <span>Logout</span>
                   </button>
                 </div>
@@ -229,7 +233,7 @@ export function Navbar() {
             onClick={() => handleMenuClick(m.href)}
             className={`tnq-mobile-menu-item ${pathname === m.href ? 'active' : ''}`}
           >
-            <span className="tnq-menu-icon" aria-hidden>{m.icon}</span>
+            <span className="tnq-menu-icon" aria-hidden>{/*{m.icon}*/}</span>
             <span className="tnq-menu-label">{m.label}</span>
           </button>
         ))}

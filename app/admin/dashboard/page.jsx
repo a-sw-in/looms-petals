@@ -30,7 +30,7 @@ export default function AdminDashboard() {
     image_url: [],
     stock: '',
     status: 'normal',
-    type: 'clothing',
+    type: 'toy',
     is_featured: false,
     searchkey: '',
   });
@@ -370,7 +370,7 @@ export default function AdminDashboard() {
       image_url: images,
       stock: product.stock,
       status: product.status || 'normal',
-      type: product.type || 'clothing',
+      type: product.type || 'toy',
       is_featured: product.is_featured,
       searchkey: product.searchkey || '',
     });
@@ -404,7 +404,7 @@ export default function AdminDashboard() {
       image_url: [],
       stock: '',
       status: 'normal',
-      type: 'clothing',
+      type: 'toy',
       is_featured: false,
       searchkey: '',
       status: 'normal'
@@ -500,7 +500,7 @@ export default function AdminDashboard() {
       filtered = filtered.filter(p => p.category === productFilterConfig.category);
     }
     if (productFilterConfig.type !== 'all') {
-      filtered = filtered.filter(p => (p.type || 'clothing') === productFilterConfig.type);
+      filtered = filtered.filter(p => (p.type || 'toy') === productFilterConfig.type);
     }
     return filtered;
   };
@@ -701,10 +701,10 @@ export default function AdminDashboard() {
                     style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
                   >
                     <option value="all">All Categories</option>
-                    <option value="Sarees">Sarees</option>
-                    <option value="Lehengas">Lehengas</option>
-                    <option value="Jewelry">Jewelry</option>
                     <option value="Accessories">Accessories</option>
+                    <option value="Toys">Toys</option>
+                    <option value="Product">Product</option>
+                    <option value="other">other</option>
                   </select>
                 </div>
                 <div className={styles.filterGroup}>
@@ -715,10 +715,11 @@ export default function AdminDashboard() {
                     style={{ padding: '6px 12px', borderRadius: '4px', border: '1px solid #ddd', fontSize: '14px' }}
                   >
                     <option value="all">All Types</option>
-                    <option value="clothing">Clothing</option>
-                    <option value="jewelry">Jewelry</option>
+                    <option value="toy">Toy</option>
                     <option value="accessories">Accessories</option>
-                    <option value="footwear">Footwear</option>
+                    <option value="gadgets">Gadgets</option>
+                    <option value="devices">Devices</option>
+                    <option value="other">other</option>
                   </select>
                 </div>
                 <button
@@ -764,7 +765,7 @@ export default function AdminDashboard() {
                       <p className={styles.cardCategory}>{product.category}</p>
                       <div className={styles.cardMeta}>
                         <span className={styles.metaItem}>
-                          <strong>Type:</strong> {product.type || 'clothing'}
+                          <strong>Type:</strong> {product.type || 'toy'}
                         </span>
                         <span className={`${styles.statusBadge} ${styles[product.status || 'normal']}`}>
                           {(product.status || 'normal').replace('_', ' ').toUpperCase()}
@@ -2048,7 +2049,7 @@ export default function AdminDashboard() {
                       name="searchkey"
                       value={formData.searchkey}
                       onChange={handleChange}
-                      placeholder="e.g. red silk saree wedding"
+                      placeholder="e.g. RC drift car accessories tech"
                     />
                   </div>
                 </div>
@@ -2063,10 +2064,10 @@ export default function AdminDashboard() {
                       required
                     >
                       <option value="">Select category</option>
-                      <option value="Sarees">Sarees</option>
-                      <option value="Lehengas">Lehengas</option>
-                      <option value="Jewelry">Jewelry</option>
                       <option value="Accessories">Accessories</option>
+                      <option value="Toys">Toys</option>
+                      <option value="Product">Product</option>
+                      <option value="other">other</option>
                     </select>
                   </div>
                   <div className={styles.formGroup}>
@@ -2077,10 +2078,11 @@ export default function AdminDashboard() {
                       onChange={handleChange}
                       required
                     >
-                      <option value="clothing">Clothing</option>
-                      <option value="jewelry">Jewelry</option>
+                      <option value="toy">Toy</option>
                       <option value="accessories">Accessories</option>
-                      <option value="footwear">Footwear</option>
+                      <option value="gadgets">Gadgets</option>
+                      <option value="devices">Devices</option>
+                      <option value="other">other</option>
                     </select>
                   </div>
                 </div>

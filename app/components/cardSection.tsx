@@ -123,10 +123,10 @@ export default function CardSection() {
 								<div className={styles.priceSection}>
 									<div className={styles.priceRow}>
 										<span className={styles.currentPrice}>
-										₹{product.discount_price || product.price}
-									</span>
-									{product.discount_price && (
-										<span className={styles.originalPrice}>₹{product.price}</span>
+											₹{product.discount_price || product.price}
+										</span>
+										{product.discount_price && (
+											<span className={styles.originalPrice}>₹{product.price}</span>
 										)}
 									</div>
 								</div>
