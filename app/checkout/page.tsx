@@ -32,7 +32,6 @@ export default function CheckoutPage() {
     state: "",
     pinCode: "",
     country: "India",
-    paymentMethod: "cod",
   });
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
@@ -182,20 +181,9 @@ export default function CheckoutPage() {
     }
   };
 
-  const handlePaymentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData((prev) => ({ ...prev, paymentMethod: e.target.value }));
-  };
 
-  /* Razorpay integration */
-  const loadRazorpay = () => {
-    return new Promise((resolve) => {
-      const script = document.createElement("script");
-      script.src = "https://checkout.razorpay.com/v1/checkout.js";
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.body.appendChild(script);
-    });
-  };
+
+
 
   const handlePlaceOrder = async () => {
     // Validate form first
@@ -219,73 +207,8 @@ export default function CheckoutPage() {
         return;
       }
 
-      const totalAmount = getTotalPrice();
-
-      // --- Online Payment Flow ---
-      if (formData.paymentMethod === 'online') {
-        const res = await loadRazorpay();
-        if (!res) {
-          alert("Razorpay SDK failed to load. Are you online?");
-          setIsPlacingOrder(false);
-          return;
-        }
-
-        // Create Razorpay Order
-        const orderRes = await fetch('/api/payment/razorpay', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ amount: totalAmount, currency: 'INR' }),
-        });
-        const orderData = await orderRes.json();
-
-        if (!orderRes.ok) {
-          throw new Error(orderData.message || 'Failed to initiate payment');
-        }
-
-        const options = {
-          key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID, // Enter the Key ID generated from the Dashboard
-          amount: orderData.amount,
-          currency: orderData.currency,
-          name: "Looms & Petals",
-          description: "Order Payment",
-          order_id: orderData.orderId,
-          handler: async function (response: any) {
-            // Payment Success! Now Create Order in Backend
-            await createOrderInBackend(response);
-          },
-          modal: {
-            ondismiss: function () {
-              setShowCancelModal(true);
-              setTimeout(() => {
-                router.push('/');
-              }, 3000);
-            }
-          },
-          prefill: {
-            name: formData.fullName,
-            email: formData.email,
-            contact: formData.phone,
-          },
-          theme: {
-            color: "#3399cc",
-          },
-        };
-
-        const paymentObject = new (window as any).Razorpay(options);
-        paymentObject.open();
-
-        // Note: setIsPlacingOrder is intentionally left true until callback or user close (which is hard to detect in all cases, but typically modal covers it)
-        // If user closes modal without paying, we might remain in 'loading' state or need a way to detect close.
-        // Razorpay has a 'modal.ondismiss' callback if needed.
-        paymentObject.on('payment.failed', function (response: any) {
-          alert(response.error.description);
-          setIsPlacingOrder(false);
-        });
-
-      } else {
-        // --- COD Flow ---
-        await createOrderInBackend(null);
-      }
+      // Always submit as manual order (no payment)
+      await createOrderInBackend();
 
     } catch (error: any) {
       console.error('Order placement error:', error);
@@ -294,37 +217,17 @@ export default function CheckoutPage() {
     }
   };
 
-  const createOrderInBackend = async (paymentDetails: any) => {
+  const createOrderInBackend = async () => {
     try {
-      // For online payments, verify payment signature first
-      if (formData.paymentMethod === 'online' && paymentDetails) {
-        const verifyResponse = await fetch('/api/razorpay/verify', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            razorpay_order_id: paymentDetails.razorpay_order_id,
-            razorpay_payment_id: paymentDetails.razorpay_payment_id,
-            razorpay_signature: paymentDetails.razorpay_signature,
-          }),
-        });
-
-        const verifyResult = await verifyResponse.json();
-
-        if (!verifyResult.success) {
-          throw new Error('Payment verification failed. Please contact support.');
-        }
-      }
-
       const response = await fetch('/api/orders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          formData,
+          formData: { ...formData, paymentMethod: 'manual' },
           items,
           total: getTotalPrice(),
-          paymentDetails, // Pass verify info if online
           userId: user?.id,
         }),
       });
@@ -348,7 +251,7 @@ export default function CheckoutPage() {
       }
     } catch (error: any) {
       console.error('Backend order creation error:', error);
-      alert(error.message || 'Payment successful but order creation failed. Please contact support.');
+      alert(error.message || 'Order creation failed. Please contact support.');
     } finally {
       setIsPlacingOrder(false);
     }
@@ -635,31 +538,7 @@ export default function CheckoutPage() {
                 </div>
               </div>
 
-              <div className={styles.paymentInfo}>
-                <h3>Payment Method</h3>
-                <div className={styles.paymentOptions}>
-                  <label className={styles.paymentOption}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="cod"
-                      checked={formData.paymentMethod === "cod"}
-                      onChange={handlePaymentChange}
-                    />
-                    <span>Cash on Delivery</span>
-                  </label>
-                  <label className={styles.paymentOption}>
-                    <input
-                      type="radio"
-                      name="payment"
-                      value="online"
-                      checked={formData.paymentMethod === "online"}
-                      onChange={handlePaymentChange}
-                    />
-                    <span>Online Payment (Razorpay)</span>
-                  </label>
-                </div>
-              </div>
+
 
               <button
                 type="button"
